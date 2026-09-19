@@ -56,3 +56,35 @@ class ParserTests(TestCase):
 
         self.assertEqual(h1, h2)
         self.assertNotEqual(h1, h3)
+
+    def test_extract_next_page_url_with_active_button(self):
+        from apps.scraping.parsers import extract_next_page_url
+        html_page1 = """
+        <div class="pagination">
+          <button class="btn btn-info disabled">PRÉCÉDENT</button>
+          <a class="p-2 pagination-link" href="/fr/UcaWeb/Evenement"><span class="active">1</span></a>
+          <a class="p-2 pagination-link" href="/fr/UcaWeb/Evenement/2"><span>2</span></a>
+          <a href="/fr/UcaWeb/Evenement/2"><button class="btn btn-primary">SUIVANT</button></a>
+        </div>
+        """
+        next_url = extract_next_page_url(html_page1)
+        self.assertEqual(next_url, "https://sport.univ-cotedazur.fr/fr/UcaWeb/Evenement/2")
+
+    def test_extract_next_page_url_with_disabled_button(self):
+        from apps.scraping.parsers import extract_next_page_url
+        html_page2 = """
+        <div class="pagination">
+          <a href="/fr/UcaWeb/Evenement"><button class="btn btn-primary">PRÉCÉDENT</button></a>
+          <a class="p-2 pagination-link" href="/fr/UcaWeb/Evenement"><span>1</span></a>
+          <a class="p-2 pagination-link" href="/fr/UcaWeb/Evenement/2"><span class="active">2</span></a>
+          <button class="btn btn-info disabled">SUIVANT</button>
+        </div>
+        """
+        next_url = extract_next_page_url(html_page2)
+        self.assertIsNone(next_url)
+
+    def test_extract_next_page_url_without_pagination(self):
+        from apps.scraping.parsers import extract_next_page_url
+        html_empty = "<div><p>Pas de pagination</p></div>"
+        next_url = extract_next_page_url(html_empty)
+        self.assertIsNone(next_url)

@@ -108,3 +108,45 @@ def parse_events_html(html_content: str, base_url: str = "https://sport.univ-cot
         })
 
     return parsed_events
+
+
+def extract_next_page_url(html_content: str, base_url: str = "https://sport.univ-cotedazur.fr") -> str | None:
+    """
+    Extrait l'URL absolue de la page suivante s'il existe une pagination active.
+    1. Analyse le bouton SUIVANT dans le bloc de pagination (s'il n'est pas désactivé).
+    2. En repli, recherche le lien suivant dans la liste des liens de pagination.
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+    next_link = None
+
+    # 1. Recherche du lien avec bouton SUIVANT actif
+    for a in soup.select('.pagination a'):
+        btn = a.select_one('button')
+        btn_text = (btn.get_text() if btn else a.get_text()).upper()
+        if 'SUIVANT' in btn_text:
+            btn_classes = btn.get('class', []) if btn else a.get('class', [])
+            if 'disabled' not in btn_classes:
+                next_link = a.get('href')
+                break
+
+    # 2. Recherche par position après l'élément actif
+    if not next_link:
+        pagination_links = soup.select('.pagination a.pagination-link, .pagination a[href*="Evenement"]')
+        active_el = soup.select_one('.pagination .active, .pagination span.active')
+        if active_el and pagination_links:
+            parent_a = active_el.find_parent('a')
+            if parent_a and parent_a in pagination_links:
+                idx = pagination_links.index(parent_a)
+                if idx + 1 < len(pagination_links):
+                    next_link = pagination_links[idx + 1].get('href')
+
+    if next_link:
+        next_link = next_link.strip()
+        if next_link.startswith('http'):
+            return next_link
+        elif next_link.startswith('/'):
+            return f"{base_url}{next_link}"
+        else:
+            return f"{base_url}/fr/UcaWeb/{next_link}"
+
+    return None

@@ -3,7 +3,7 @@ import logging
 import random
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
-from .parsers import parse_events_html
+from .parsers import parse_events_html, extract_next_page_url
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,16 @@ USER_AGENTS = [
 
 TARGET_URL = "https://sport.univ-cotedazur.fr/fr/UcaWeb/Evenement"
 
-async def fetch_unica_events_playwright(url: str = TARGET_URL):
+async def fetch_unica_events_playwright(url: str = TARGET_URL, max_pages: int = 20):
     """
     Lance une session Playwright asynchrone avec stealth et temporisations humaines
-    pour récupérer la page d'événements UniCA Sport en limitant le risque de détection.
+    pour récupérer tous les événements UniCA Sport en parcourant la pagination (ex: /Evenement/2).
     """
     selected_ua = random.choice(USER_AGENTS)
-    logger.info(f"Démarrage du scan Playwright sur {url} avec User-Agent {selected_ua[:35]}...")
+    logger.info(f"Démarrage du scan Playwright multi-pages sur {url} avec User-Agent {selected_ua[:35]}...")
+
+    all_events = []
+    seen_ids = set()
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -45,31 +48,55 @@ async def fetch_unica_events_playwright(url: str = TARGET_URL):
         stealth = Stealth()
         await stealth.apply_stealth_async(page)
 
+        current_url = url
+        page_idx = 1
+
         try:
-            # Navigation avec temporisation
-            await page.goto(url, wait_until='domcontentloaded', timeout=35000)
-            
-            # Délai humain aléatoire (1 à 2.5 secondes)
-            await asyncio.sleep(random.uniform(1.2, 2.5))
+            while current_url and page_idx <= max_pages:
+                logger.info(f"Navigation Playwright vers page {page_idx} : {current_url}")
+                await page.goto(current_url, wait_until='domcontentloaded', timeout=35000)
 
-            # Attendre que les cartes d'événements soient chargées
-            try:
-                await page.wait_for_selector('.card-event', timeout=8000)
-            except Exception:
-                logger.warning("Sélecteur '.card-event' non apparu dans le délai imparti.")
+                # Délai humain aléatoire (0.8 à 1.8 secondes)
+                await asyncio.sleep(random.uniform(0.8, 1.8))
 
-            content = await page.content()
-            events = parse_events_html(content)
-            logger.info(f"Scan Playwright terminé avec succès : {len(events)} événement(s) extrait(s).")
-            return events
+                # Attendre le sélecteur des événements
+                try:
+                    await page.wait_for_selector('.card-event', timeout=6000)
+                except Exception:
+                    logger.debug(f"Sélecteur '.card-event' non apparu sur {current_url}.")
+
+                content = await page.content()
+                page_events = parse_events_html(content)
+                if not page_events:
+                    logger.info(f"Page {page_idx} sans événements : arrêt du parcours de pagination.")
+                    break
+
+                for evt in page_events:
+                    if evt['source_id'] not in seen_ids:
+                        seen_ids.add(evt['source_id'])
+                        all_events.append(evt)
+
+                # Recherche de la page suivante
+                next_url = extract_next_page_url(content)
+                if next_url and next_url != current_url:
+                    current_url = next_url
+                    page_idx += 1
+                else:
+                    break
+
+            logger.info(f"Scan Playwright multi-pages terminé : {len(all_events)} événement(s) trouvé(s) sur {page_idx} page(s).")
+            return all_events
 
         except Exception as e:
             logger.error(f"Erreur lors de la navigation Playwright : {e}")
+            if all_events:
+                # Retourne ce qui a déjà été extrait sur les premières pages
+                return all_events
             raise e
         finally:
             await browser.close()
 
 
-def scrape_unica_events_sync(url: str = TARGET_URL):
+def scrape_unica_events_sync(url: str = TARGET_URL, max_pages: int = 20):
     """Point d'entrée synchrone utilisable depuis les tâches Celery ou commandes de gestion."""
-    return asyncio.run(fetch_unica_events_playwright(url))
+    return asyncio.run(fetch_unica_events_playwright(url, max_pages=max_pages))
