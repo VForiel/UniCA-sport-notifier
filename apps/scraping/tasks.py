@@ -58,6 +58,25 @@ def calculate_next_scan_delay(current_dt: datetime = None, settings_obj: ServerS
     return max(5, delay)  # Minimum 5 secondes de sécurité
 
 
+def safe_dispatch_task(task_func, *args, **kwargs):
+    """
+    Délègue la tâche à Celery de manière asynchrone (broker Redis).
+    Si le broker est indisponible (ex: environnement dev local sans Redis démarré),
+    exécute directement la tâche de façon synchrone pour éviter tout blocage réseau.
+    """
+    try:
+        from django.conf import settings
+        import redis
+        broker_url = getattr(settings, 'CELERY_BROKER_URL', '')
+        if broker_url.startswith('redis://'):
+            r = redis.from_url(broker_url, socket_connect_timeout=0.5, socket_timeout=0.5)
+            r.ping()
+        return task_func.apply_async(args=args, kwargs=kwargs, retry=False)
+    except Exception as e:
+        logger.warning(f"Broker Celery indisponible ({e}), exécution synchrone locale de {task_func.__name__}...")
+        return task_func(*args, **kwargs)
+
+
 @shared_task(bind=True, queue='celery', max_retries=2)
 def auto_register_task(self, user_id: int, event_id: int, attempt_id: int):
     """
@@ -80,7 +99,8 @@ def auto_register_task(self, user_id: int, event_id: int, attempt_id: int):
     notif_msg = (
         f"Résultat réservation '{event.title}' : {message}"
     )
-    dispatch_notification_task.delay(
+    safe_dispatch_task(
+        dispatch_notification_task,
         user_id=user.id,
         event_id=event.id,
         message=notif_msg,
@@ -179,11 +199,12 @@ def scan_events_task(self, auto_reschedule: bool = True):
                                 status='en_attente'
                             )
                             # Déclencher la tâche Celery dédiée d'inscription
-                            auto_register_task.delay(user.id, event.id, attempt.id)
+                            safe_dispatch_task(auto_register_task, user.id, event.id, attempt.id)
 
                         # 2. Envoyer la notification favori prioritaire
                         message = f"⭐ Événement FAVORIS détecté : {event.title} !"
-                        dispatch_notification_task.delay(
+                        safe_dispatch_task(
+                            dispatch_notification_task,
                             user_id=user.id,
                             event_id=event.id,
                             message=message,
@@ -192,7 +213,8 @@ def scan_events_task(self, auto_reschedule: bool = True):
                     else:
                         # Notification standard
                         message = f"Nouvel événement disponible : {event.title}"
-                        dispatch_notification_task.delay(
+                        safe_dispatch_task(
+                            dispatch_notification_task,
                             user_id=user.id,
                             event_id=event.id,
                             message=message
@@ -218,7 +240,10 @@ def scan_events_task(self, auto_reschedule: bool = True):
     if auto_reschedule:
         next_delay = calculate_next_scan_delay(settings_obj=settings_obj)
         logger.info(f"Scan terminé ({status}). Prochaine exécution programmée dans {next_delay} secondes.")
-        scan_events_task.apply_async(countdown=next_delay)
+        try:
+            scan_events_task.apply_async(countdown=next_delay, retry=False)
+        except Exception as e:
+            logger.info(f"Broker Celery non connecté pour la replanification ({e}).")
 
     return {
         'status': status,

@@ -55,3 +55,22 @@ class EventViewFilterTests(TestCase):
         self.assertIn(self.real_event.image_url, content)
         # Ne doit PAS contenir l'événement simulé
         self.assertNotIn("KAYAK de Test [SIMULATION]", content)
+
+    def test_redundant_buttons_removed_and_logout_moved(self):
+        # 1. Page événements : pas de bouton "Gérer mes règles"
+        r_events = self.client.get('/events/')
+        self.assertNotIn("Gérer mes règles", r_events.content.decode('utf-8'))
+
+        # 2. Page d'accueil : pas de boutons redondants
+        r_home = self.client.get('/')
+        home_html = r_home.content.decode('utf-8')
+        self.assertNotIn("Simuler un test", home_html)
+        self.assertNotIn("Nouvelle règle", home_html)
+        self.assertNotIn("Voir les événements", home_html)
+        self.assertNotIn("/accounts/logout/", home_html)
+
+        # 3. Page profil : bouton de déconnexion présent
+        r_prof = self.client.get('/accounts/profile/')
+        prof_html = r_prof.content.decode('utf-8')
+        self.assertIn("Se déconnecter", prof_html)
+        self.assertIn("/accounts/logout/", prof_html)

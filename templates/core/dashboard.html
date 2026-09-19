@@ -3,23 +3,9 @@
 {% block title %}Tableau de bord — UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-  <div>
-    <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Bonjour, {{ user.email }} 👋</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem;">Bienvenue sur votre espace de veille UniCA Sport.</p>
-  </div>
-  <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-    <form method="post" action="{% url 'simulate_notification_test' %}" style="display: inline;">
-      {% csrf_token %}
-      <input type="hidden" name="title" value="KAYAK & Calanques [TEST TABLEAU DE BORD]">
-      <input type="hidden" name="next" value="/">
-      <button type="submit" class="btn btn-outline" style="border-color: #38bdf8; color: #38bdf8;">
-        <span class="material-symbols-outlined">science</span> Simuler un test
-      </button>
-    </form>
-    <a href="/rules/" class="btn btn-primary"><span class="material-symbols-outlined">add</span> Nouvelle règle</a>
-    <a href="/events/" class="btn btn-outline"><span class="material-symbols-outlined">visibility</span> Voir les événements</a>
-  </div>
+<div style="margin-bottom: 2rem;">
+  <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Bonjour, {{ user.email }} 👋</h1>
+  <p style="color: #94a3b8; font-size: 0.95rem;">Bienvenue sur votre espace de veille UniCA Sport.</p>
 </div>
 
 <!-- Stats Grid -->

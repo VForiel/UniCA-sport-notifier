@@ -60,6 +60,16 @@
       "envFile": "${workspaceFolder}/.env"
     },
     {
+      "name": "UniCA: Lancer la surveillance continue (Dev local)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/manage.py",
+      "args": ["run_scan_loop"],
+      "django": true,
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
       "name": "Tests: Exécuter la suite de tests unitaires",
       "type": "debugpy",
       "request": "launch",

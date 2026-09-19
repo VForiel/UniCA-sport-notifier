@@ -27,10 +27,16 @@
 
     <hr style="border: 0; border-top: 1px solid var(--md-sys-color-outline); margin: 2rem 0 1.5rem 0;">
 
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <a href="/accounts/password/change/" class="btn btn-outline" style="font-size: 0.85rem;">
-        <span class="material-symbols-outlined">password</span> Changer de mot de passe
-      </a>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="/accounts/password/change/" class="btn btn-outline" style="font-size: 0.85rem;">
+          <span class="material-symbols-outlined">password</span> Changer de mot de passe
+        </a>
+
+        <a href="/accounts/logout/" class="btn btn-outline" style="font-size: 0.85rem; border-color: rgba(244, 63, 94, 0.4); color: #fb7185;">
+          <span class="material-symbols-outlined">logout</span> Se déconnecter
+        </a>
+      </div>
 
       <a href="/accounts/delete/" class="btn btn-danger" style="font-size: 0.85rem;">
         <span class="material-symbols-outlined">person_remove</span> Supprimer mon compte
