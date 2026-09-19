@@ -13,56 +13,11 @@ logger = logging.getLogger(__name__)
 MAX_SIMULTANEOUS_HOLDS = 2
 AUTH_LOGIN_URL = "https://sport.univ-cotedazur.fr/fr/Connexion"
 
-async def perform_auto_registration_playwright(user, event, attempt_id: int):
+async def _run_playwright_cart_flow(unica_id: str, raw_pwd: str, source_id: str, title: str) -> tuple[bool, str]:
     """
-    Effectue la tentative de blocage de place temporaire (créneau 30 minutes)
-    via Playwright authentifié pour le compte de l'utilisateur.
-
-    RÈGLE DE SÉCURITÉ ET D'ÉTHIQUE ABSOLUE :
-    Ce script s'arrête EXPLICITEMENT et IMPÉRATIVEMENT avant toute validation
-    de commande payante ou écran de paiement bancaire.
+    Exécute le navigateur Playwright pour se connecter au CAS et ajouter l'événement au panier.
+    S'arrête strictement avant toute étape de paiement.
     """
-    attempt = RegistrationAttempt.objects.get(id=attempt_id)
-    credentials = getattr(user, 'unica_credentials', None)
-
-    if not credentials or not credentials.unica_identifier or not credentials.encrypted_password:
-        attempt.status = 'échoué'
-        attempt.error_message = "Identifiants UniCA non configurés ou incomplets."
-        attempt.save()
-        return False, attempt.error_message
-
-    if not credentials.auto_registration_consent:
-        attempt.status = 'échoué'
-        attempt.error_message = "Consentement de l'utilisateur manquant pour la réservation automatique."
-        attempt.save()
-        return False, attempt.error_message
-
-    # Vérification du nombre maximal de blocages actifs
-    active_holds = RegistrationAttempt.objects.filter(
-        user=user,
-        status='réussi',
-        hold_expires_at__gt=timezone.now()
-    ).count()
-
-    if active_holds >= MAX_SIMULTANEOUS_HOLDS:
-        attempt.status = 'échoué'
-        attempt.error_message = (
-            f"Limite éthique atteinte : vous avez déjà {active_holds} place(s) réservée(s) "
-            "non validée(s). Confirmez vos inscriptions en cours avant d'en bloquer de nouvelles."
-        )
-        attempt.save()
-        return False, attempt.error_message
-
-    try:
-        raw_password = decrypt_password(credentials.encrypted_password)
-    except Exception as e:
-        attempt.status = 'échoué'
-        attempt.error_message = f"Erreur de déchiffrement des identifiants : {str(e)}"
-        attempt.save()
-        return False, attempt.error_message
-
-    logger.info(f"[AutoRegister] Démarrage de la réservation pour {user.email} sur {event.title}...")
-
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
@@ -80,14 +35,14 @@ async def perform_auto_registration_playwright(user, event, attempt_id: int):
         try:
             # 1. Navigation directe vers le CAS UniCA
             cas_url = "https://sport.univ-cotedazur.fr/fr/Connexion/Cas/cas-uca"
-            logger.info(f"[AutoRegister] Connexion CAS sur {cas_url} pour {user.email}...")
+            logger.info(f"[AutoRegister] Connexion CAS sur {cas_url} pour {unica_id}...")
             await page.goto(cas_url, wait_until='domcontentloaded', timeout=30000)
             await page.wait_for_selector('input#username', timeout=15000)
 
             # Saisie humaine des identifiants CAS
-            await page.fill('input#username', credentials.unica_identifier)
+            await page.fill('input#username', unica_id)
             await asyncio.sleep(random.uniform(0.3, 0.7))
-            await page.fill('input#password', raw_password)
+            await page.fill('input#password', raw_pwd)
             await asyncio.sleep(random.uniform(0.3, 0.7))
 
             submit_btn = await page.query_selector('button[type="submit"], input[type="submit"]')
@@ -98,16 +53,15 @@ async def perform_auto_registration_playwright(user, event, attempt_id: int):
 
             # 2. Navigation vers la liste des événements
             events_page_url = "https://sport.univ-cotedazur.fr/fr/UcaWeb/Evenement"
-            logger.info(f"[AutoRegister] Recherche de l'événement {event.title} (ID {event.source_id})...")
+            logger.info(f"[AutoRegister] Recherche de l'événement {title} (ID {source_id})...")
             await page.goto(events_page_url, wait_until='domcontentloaded', timeout=30000)
             await asyncio.sleep(random.uniform(1.0, 1.8))
 
-            # Recherche du bouton d'inscription pour l'événement (avec gestion multi-pages si besoin)
-            btn_selector = f'button.js-inscription[data-id="{event.source_id}"], .card-event:has(#modal_details_event_{event.source_id}) button.js-inscription'
+            # Recherche du bouton d'inscription pour l'événement (avec gestion multi-pages)
+            btn_selector = f'button.js-inscription[data-id="{source_id}"], .card-event:has(#modal_details_event_{source_id}) button.js-inscription'
             register_btn = await page.query_selector(btn_selector)
 
             if not register_btn:
-                # Vérification sur les pages de pagination si non trouvé en page 1
                 from .parsers import extract_next_page_url
                 curr_content = await page.content()
                 next_url = extract_next_page_url(curr_content)
@@ -120,16 +74,15 @@ async def perform_auto_registration_playwright(user, event, attempt_id: int):
                     next_url = extract_next_page_url(curr_content)
 
             if not register_btn:
-                # Diagnostic précis si le bouton est manquant
                 page_text = await page.inner_text('body')
                 if "complet" in page_text.lower():
                     raise Exception("L'événement est complet.")
                 if "déjà inscrit" in page_text.lower():
                     raise Exception("Vous êtes déjà inscrit à cet événement.")
-                raise Exception(f"Bouton d'inscription introuvable pour l'événement {event.source_id} ({event.title}).")
+                raise Exception(f"Bouton d'inscription introuvable pour l'événement {source_id} ({title}).")
 
             # 3. Clic sur S'INSCRIRE
-            logger.info(f"[AutoRegister] Clic sur le bouton S'inscrire pour l'événement {event.source_id}...")
+            logger.info(f"[AutoRegister] Clic sur le bouton S'inscrire pour l'événement {source_id}...")
             await register_btn.click()
             await asyncio.sleep(1.0)
 
@@ -148,29 +101,86 @@ async def perform_auto_registration_playwright(user, event, attempt_id: int):
             await page.goto(cart_url, wait_until='domcontentloaded', timeout=20000)
             await asyncio.sleep(1.5)
 
-            # =========================================================================
-            # ARRÊT EXPLICITE AVANT PAIEMENT (EXIGÉ PAR LE CAHIER DES CHARGES SECTION 4.2 & 7.4)
-            # =========================================================================
-            # À cette étape, la place est réservée dans le panier pour 30 minutes.
-            # NOUS N'EFFECTUONS AUCUNE VALIDATION DE COMMANDE NI CONFIRMATION BANCAIRE.
-            # L'utilisateur finalise et paie lui-même sa réservation sur UniCA Sport.
-            # =========================================================================
+            # ARRÊT EXPLICITE AVANT PAIEMENT
             logger.info(
-                f"[AutoRegister - STOP SÉCURITÉ] Créneau réservé 30 minutes pour {user.email} sur {event.title}. "
+                f"[AutoRegister - STOP SÉCURITÉ] Créneau réservé 30 minutes sur {title}. "
                 "Arrêt explicite avant paiement."
             )
-
-            attempt.status = 'réussi'
-            attempt.hold_expires_at = timezone.now() + timedelta(minutes=30)
-            attempt.error_message = f"Place réservée avec succès pour '{event.title}'. Vous disposez de 30 minutes pour finaliser sur votre panier UniCA Sport !"
-            attempt.save()
-            return True, attempt.error_message
+            msg = f"Place réservée avec succès pour '{title}'. Vous disposez de 30 minutes pour finaliser sur votre panier UniCA Sport !"
+            return True, msg
 
         except Exception as exc:
-            logger.error(f"[AutoRegister] Échec de l'inscription pour {user.email} : {exc}")
-            attempt.status = 'échoué'
-            attempt.error_message = str(exc)[:500]
-            attempt.save()
+            logger.error(f"[AutoRegister] Erreur lors du flux Playwright : {exc}")
             return False, str(exc)
         finally:
             await browser.close()
+
+
+def perform_auto_registration_sync(user, event, attempt_id: int) -> tuple[bool, str]:
+    """
+    Exécute les validations préalables côté base de données Django ORM,
+    puis lance le blocage du panier via Playwright de façon isolée et sécurisée.
+    """
+    attempt = RegistrationAttempt.objects.get(id=attempt_id)
+    credentials = getattr(user, 'unica_credentials', None)
+
+    if not credentials or not credentials.unica_identifier or not credentials.encrypted_password:
+        attempt.status = 'échoué'
+        attempt.error_message = "Identifiants UniCA non configurés ou incomplets."
+        attempt.save()
+        return False, attempt.error_message
+
+    if not credentials.auto_registration_consent:
+        attempt.status = 'échoué'
+        attempt.error_message = "Consentement de l'utilisateur manquant pour la réservation automatique."
+        attempt.save()
+        return False, attempt.error_message
+
+    # Vérification du nombre maximal de blocages actifs (réservé aux usagers non-administrateurs)
+    is_admin = bool(getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False))
+    if not is_admin:
+        active_holds = RegistrationAttempt.objects.filter(
+            user=user,
+            status='réussi',
+            hold_expires_at__gt=timezone.now()
+        ).count()
+
+        if active_holds >= MAX_SIMULTANEOUS_HOLDS:
+            attempt.status = 'échoué'
+            attempt.error_message = (
+                f"Limite éthique atteinte : vous avez déjà {active_holds} place(s) réservée(s) "
+                "non validée(s). Confirmez vos inscriptions en cours avant d'en bloquer de nouvelles."
+            )
+            attempt.save()
+            return False, attempt.error_message
+
+    try:
+        raw_password = decrypt_password(credentials.encrypted_password)
+    except Exception as e:
+        attempt.status = 'échoué'
+        attempt.error_message = f"Erreur de déchiffrement des identifiants : {str(e)}"
+        attempt.save()
+        return False, attempt.error_message
+
+    logger.info(f"[AutoRegister] Démarrage de la réservation pour {user.email} sur {event.title}...")
+    success, message = asyncio.run(_run_playwright_cart_flow(
+        credentials.unica_identifier,
+        raw_password,
+        event.source_id,
+        event.title
+    ))
+
+    if success:
+        attempt.status = 'réussi'
+        attempt.hold_expires_at = timezone.now() + timedelta(minutes=30)
+        attempt.error_message = message
+    else:
+        attempt.status = 'échoué'
+        attempt.error_message = message[:500]
+    attempt.save()
+    return success, message
+
+
+# Alias pour rétrocompatibilité
+perform_auto_registration = perform_auto_registration_sync
+perform_auto_registration_playwright = perform_auto_registration_sync

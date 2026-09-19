@@ -118,3 +118,67 @@ class RuleMatchingTests(TestCase):
         res = evaluate_event_for_user(self.user, event_both)
         self.assertTrue(res['is_blacklisted'])
         self.assertTrue(res['is_favorite'])
+
+
+class AutoRegisterHoldLimitTests(TestCase):
+    def setUp(self):
+        import asyncio
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.events.models import RegistrationAttempt, UniCACredentials
+
+        self.user = User.objects.create_user(email="user@univ-cotedazur.fr", password="password123")
+        self.admin = User.objects.create_user(email="admin@univ-cotedazur.fr", password="password123", is_staff=True)
+
+        self.event = Event.objects.create(
+            source_id="3001",
+            title="Voile",
+            date_event="25/09/2026",
+            location="Mer",
+            content_hash="hash3001"
+        )
+
+        # Configurer les identifiants pour les deux utilisateurs
+        UniCACredentials.objects.create(
+            user=self.user,
+            unica_identifier="user_test",
+            encrypted_password="dummy_encrypted",
+            auto_registration_consent=True
+        )
+        UniCACredentials.objects.create(
+            user=self.admin,
+            unica_identifier="admin_test",
+            encrypted_password="dummy_encrypted",
+            auto_registration_consent=True
+        )
+
+        # Créer 2 tentatives actives (holds) pour chaque utilisateur
+        future = timezone.now() + timedelta(minutes=20)
+        RegistrationAttempt.objects.create(user=self.user, event=self.event, status='réussi', hold_expires_at=future)
+        RegistrationAttempt.objects.create(user=self.user, event=self.event, status='réussi', hold_expires_at=future)
+
+        RegistrationAttempt.objects.create(user=self.admin, event=self.event, status='réussi', hold_expires_at=future)
+        RegistrationAttempt.objects.create(user=self.admin, event=self.event, status='réussi', hold_expires_at=future)
+
+    def test_standard_user_blocked_by_max_holds(self):
+        from apps.events.models import RegistrationAttempt
+        from apps.scraping.auto_register import perform_auto_registration_playwright
+
+        attempt = RegistrationAttempt.objects.create(user=self.user, event=self.event, status='en_attente')
+        success, message = perform_auto_registration_playwright(self.user, self.event, attempt.id)
+        self.assertFalse(success)
+        self.assertIn("Limite éthique atteinte", message)
+
+    def test_admin_bypasses_max_holds(self):
+        from unittest.mock import patch
+        from apps.events.models import RegistrationAttempt
+        from apps.scraping.auto_register import perform_auto_registration_playwright
+
+        attempt = RegistrationAttempt.objects.create(user=self.admin, event=self.event, status='en_attente')
+        # On mock decrypt_password pour vérifier que la validation franchit le check des holds
+        with patch('apps.scraping.auto_register.decrypt_password', side_effect=Exception("DecryptionReached")):
+            success, message = perform_auto_registration_playwright(self.admin, self.event, attempt.id)
+            self.assertFalse(success)
+            # Ne doit PAS être bloqué par la limite éthique, mais atteindre l'étape suivante (déchiffrement)
+            self.assertNotIn("Limite éthique atteinte", message)
+            self.assertIn("DecryptionReached", message)

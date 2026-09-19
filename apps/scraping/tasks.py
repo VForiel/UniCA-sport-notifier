@@ -93,7 +93,7 @@ def auto_register_task(self, user_id: int, event_id: int, attempt_id: int):
         logger.error(f"auto_register_task: Objets introuvables : {e}")
         return False
 
-    success, message = asyncio.run(perform_auto_registration_playwright(user, event, attempt_id))
+    success, message = perform_auto_registration_playwright(user, event, attempt_id)
 
     # Notification immédiate du résultat de la réservation
     notif_msg = (
