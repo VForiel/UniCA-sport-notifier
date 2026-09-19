@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Règles de Filtrage — UniCA Sport Notifier{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Règles de Filtrage</h1>
+    <p style="color: #94a3b8; font-size: 0.95rem;">
+      Configurez vos mots-clés pour bloquer les alertes indésirables ou marquer vos activités sportives favorites.
+    </p>
+  </div>
+
+  <!-- Formulaire d'ajout de règle -->
+  <div class="card" style="border-color: rgba(56, 189, 248, 0.3);">
+    <div class="card-header">
+      <h2 class="card-title"><span class="material-symbols-outlined">add_circle</span> Ajouter une règle</h2>
+    </div>
+
+    <form method="post" action="/rules/" hx-post="/rules/" hx-target="#rules-container" hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful) this.reset()">
+      {% csrf_token %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Type de règle</label>
+          <select name="rule_type" class="form-control">
+            <option value="favorite" selected>⭐ Favori (Auto-inscrire & Notifier)</option>
+            <option value="blacklist">🚫 Liste noire (Ne jamais envoyer)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mode de correspondance</label>
+          <select name="match_mode" class="form-control">
+            <option value="contains" selected>Contient</option>
+            <option value="starts_with">Commence par</option>
+            <option value="ends_with">Se termine par</option>
+            <option value="equals">Égal à</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Champ ciblé</label>
+          <select name="target_field" class="form-control">
+            <option value="title_and_description" selected>Titre et description</option>
+            <option value="title">Titre uniquement</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr auto; gap: 1rem; align-items: flex-end; margin-bottom: 1rem;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Mot-clé / Activité</label>
+          <input type="text" name="keyword" class="form-control" placeholder="Ex : Kayak, Paddle, Volley, Valrose..." required>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; height: 46px;">
+          <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; cursor: pointer; color: #e2e8f0;">
+            <input type="checkbox" name="case_sensitive" value="1" style="width: 18px; height: 18px; accent-color: #0284c7;">
+            Sensible à la casse
+          </label>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">
+          <span class="material-symbols-outlined">save</span> Enregistrer la règle
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Liste des règles existantes -->
+  <div style="margin-top: 2rem;">
+    <h2 style="font-size: 1.3rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span class="material-symbols-outlined">tune</span> Vos règles actives
+    </h2>
+
+    <div id="rules-container">
+      {% for rule in rules %}
+        {% include "events/partials/rule_item.html" with rule=rule %}
+      {% empty %}
+        <div class="card" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
+          <span class="material-symbols-outlined" style="font-size: 48px; color: #64748b; margin-bottom: 0.5rem;">rule</span>
+          <p>Aucune règle configurée. Ajoutez votre première règle ci-dessus !</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+<div class="alert alert-success" style="margin-top: 1rem; flex-direction: column; align-items: flex-start;">
+  <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem;">
+    <span class="material-symbols-outlined">verified</span>
+    <span>Simulation déclenchée : {{ event.title }}</span>
+  </div>
+  <ul style="margin-left: 1.5rem; font-size: 0.85rem;">
+    {% for res in results %}
+      <li>{{ res }}</li>
+    {% endfor %}
+  </ul>
+</div>

@@ -1,0 +1,29 @@
+# Caddyfile - Reverse Proxy avec TLS Let's Encrypt automatique
+# Remplacez votre-domaine.fr par votre véritable domaine pointant vers ce serveur.
+
+{$DOMAIN_NAME:localhost} {
+    # Compression gzip et zstd automatique
+    encode gzip zstd
+
+    # Fichiers statiques servis directement par Caddy pour des performances optimales
+    handle /static/* {
+        root * /srv/staticfiles
+        file_server
+    }
+
+    # Tout le reste est redirigé vers l'application Django Gunicorn
+    handle {
+        reverse_proxy web:8000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up Host {host}
+        }
+    }
+
+    # En-têtes de sécurité
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

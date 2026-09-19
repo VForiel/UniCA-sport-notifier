@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}UniCA Sport Notifier{% endblock %}</title>
+
+  <!-- PWA & Meta Tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="/static/icons/icon-192.png">
+
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+  <!-- Material Web Components (@material/web) CDN -->
+  <script type="module" src="https://esm.run/@material/web/all.js"></script>
+
+  <!-- HTMX CDN -->
+  <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header class="navbar">
+    <a href="/" class="brand">
+      <img src="/static/icons/icon-192.png" alt="Logo UniCA Sport" class="brand-icon">
+      <span>UniCA Sport Notifier</span>
+    </a>
+
+    <nav>
+      <ul class="nav-links">
+        {% if user.is_authenticated %}
+          <li><a href="/" class="nav-link"><span class="material-symbols-outlined">dashboard</span> Accueil</a></li>
+          <li><a href="/rules/" class="nav-link"><span class="material-symbols-outlined">filter_alt</span> Règles</a></li>
+          <li><a href="/credentials/" class="nav-link"><span class="material-symbols-outlined">key</span> Identifiants UniCA</a></li>
+          <li><a href="/notifications/" class="nav-link"><span class="material-symbols-outlined">notifications</span> Notifications</a></li>
+          <li><a href="/events/" class="nav-link"><span class="material-symbols-outlined">sports</span> Événements</a></li>
+          {% if user.is_staff %}
+            <li><a href="/admin/" class="nav-link" style="color: #fbbf24;"><span class="material-symbols-outlined">admin_panel_settings</span> Admin</a></li>
+          {% endif %}
+          <li><a href="/accounts/profile/" class="nav-link"><span class="material-symbols-outlined">account_circle</span> {{ user.email }}</a></li>
+          <li><a href="/accounts/logout/" class="nav-link"><span class="material-symbols-outlined">logout</span></a></li>
+        {% else %}
+          <li><a href="/accounts/login/" class="nav-link"><span class="material-symbols-outlined">login</span> Connexion</a></li>
+          <li><a href="/accounts/signup/" class="btn btn-primary"><span class="material-symbols-outlined">person_add</span> S'inscrire</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="container">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">
+          <span class="material-symbols-outlined">{% if message.tags == 'success' %}check_circle{% else %}error{% endif %}</span>
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>UniCA Sport Notifier • Développé pour les étudiants et personnels d'Université Côte d'Azur.</p>
+    <p style="font-size: 0.75rem; margin-top: 0.25rem; opacity: 0.7;">Application indépendante — Arrêt systématique avant paiement pour toute réservation.</p>
+  </footer>
+
+  <!-- App Client Scripts -->
+  <script src="/static/js/app.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

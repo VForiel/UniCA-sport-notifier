@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription — UniCA Sport Notifier{% endblock %}
+
+{% block content %}
+<div style="max-width: 460px; margin: 3rem auto;">
+  <div class="card">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; color: #34d399;">
+        <span class="material-symbols-outlined" style="font-size: 32px;">person_add</span>
+      </div>
+      <h1 style="font-size: 1.6rem; margin-bottom: 0.25rem;">Créer un compte</h1>
+      <p style="color: #94a3b8; font-size: 0.9rem;">Recevez vos alertes de créneaux sportifs</p>
+    </div>
+
+    {% if form.errors %}
+      <div class="alert alert-error">
+        <span class="material-symbols-outlined">error</span>
+        <div style="font-size: 0.85rem;">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'account_signup' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Adresse email</label>
+        <input type="email" name="email" class="form-control" placeholder="prenom.nom@univ-cotedazur.fr" required autofocus>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input type="password" name="password1" class="form-control" placeholder="••••••••••••" required>
+        <span style="font-size: 0.75rem; color: #94a3b8;">Minimum 8 caractères</span>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label class="form-label">Confirmation du mot de passe</label>
+        <input type="password" name="password2" class="form-control" placeholder="••••••••••••" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
+        <span class="material-symbols-outlined">check</span> Créer mon compte
+      </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #94a3b8;">
+      Déjà inscrit ? <a href="{% url 'account_login' %}" style="color: #38bdf8; font-weight: 500;">Se connecter</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
