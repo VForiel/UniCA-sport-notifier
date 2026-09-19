@@ -78,87 +78,91 @@ async def perform_auto_registration_playwright(user, event, attempt_id: int):
         await stealth.apply_stealth_async(page)
 
         try:
-            # 1. Navigation vers la page de connexion
-            await page.goto(AUTH_LOGIN_URL, wait_until='domcontentloaded', timeout=30000)
-            await asyncio.sleep(random.uniform(1.0, 2.0))
+            # 1. Navigation directe vers le CAS UniCA
+            cas_url = "https://sport.univ-cotedazur.fr/fr/Connexion/Cas/cas-uca"
+            logger.info(f"[AutoRegister] Connexion CAS sur {cas_url} pour {user.email}...")
+            await page.goto(cas_url, wait_until='domcontentloaded', timeout=30000)
+            await page.wait_for_selector('input#username', timeout=15000)
 
-            # Choix du mode d'authentification : CAS ou Basic
-            # UniCA propose soit CAS UCA (/fr/Connexion/Cas/cas-uca), soit Compte externe (/fr/Connexion/Basic/default)
-            cas_link = await page.query_selector('a[href*="/Cas/cas-uca"]')
-            if cas_link:
-                await cas_link.click()
-                await page.wait_for_load_state('domcontentloaded')
-                await asyncio.sleep(1.0)
+            # Saisie humaine des identifiants CAS
+            await page.fill('input#username', credentials.unica_identifier)
+            await asyncio.sleep(random.uniform(0.3, 0.7))
+            await page.fill('input#password', raw_password)
+            await asyncio.sleep(random.uniform(0.3, 0.7))
 
-                # Remplissage formulaire CAS (username / password)
-                username_input = await page.query_selector('input#username, input[name="username"]')
-                password_input = await page.query_selector('input#password, input[name="password"]')
+            submit_btn = await page.query_selector('button[type="submit"], input[type="submit"]')
+            if submit_btn:
+                await submit_btn.click()
+                await page.wait_for_load_state('networkidle', timeout=20000)
+                await asyncio.sleep(1.5)
 
-                if username_input and password_input:
-                    await username_input.fill(credentials.unica_identifier)
-                    await asyncio.sleep(random.uniform(0.3, 0.7))
-                    await password_input.fill(raw_password)
-                    await asyncio.sleep(random.uniform(0.3, 0.7))
-                    
-                    submit_btn = await page.query_selector('input[type="submit"], button[type="submit"]')
-                    if submit_btn:
-                        await submit_btn.click()
-                        await page.wait_for_load_state('networkidle', timeout=15000)
+            # 2. Navigation vers la liste des événements
+            events_page_url = "https://sport.univ-cotedazur.fr/fr/UcaWeb/Evenement"
+            logger.info(f"[AutoRegister] Recherche de l'événement {event.title} (ID {event.source_id})...")
+            await page.goto(events_page_url, wait_until='domcontentloaded', timeout=30000)
+            await asyncio.sleep(random.uniform(1.0, 1.8))
 
-            # 2. Navigation vers la page de l'événement cible
-            logger.info(f"[AutoRegister] Navigation vers l'événement {event.url}")
-            await page.goto(event.url, wait_until='domcontentloaded', timeout=30000)
-            await asyncio.sleep(random.uniform(1.2, 2.0))
-
-            # 3. Recherche du bouton d'inscription pour l'événement
-            # Selon le code source UniCA : bouton dans .card-event ou modal d'inscription
-            register_btn = await page.query_selector(
-                f'.card-event:has(#modal_details_event_{event.source_id}) button.btn-primary:not([data-dismiss]), '
-                f'button[data-target="#modal_details_event_{event.source_id}"] ~ button, '
-                'a.btn-primary:has-text("S\'inscrire"), button.btn-primary:has-text("S\'inscrire"), '
-                '.card-event a[href*="Inscription"], .card-event button[data-action*="inscription"]'
-            )
+            # Recherche du bouton d'inscription pour l'événement (avec gestion multi-pages si besoin)
+            btn_selector = f'button.js-inscription[data-id="{event.source_id}"], .card-event:has(#modal_details_event_{event.source_id}) button.js-inscription'
+            register_btn = await page.query_selector(btn_selector)
 
             if not register_btn:
-                # Vérifier si l'utilisateur est déjà inscrit ou complet
+                # Vérification sur les pages de pagination si non trouvé en page 1
+                from .parsers import extract_next_page_url
+                curr_content = await page.content()
+                next_url = extract_next_page_url(curr_content)
+                while next_url and not register_btn:
+                    logger.info(f"[AutoRegister] Événement non trouvé sur cette page, consultation de {next_url}...")
+                    await page.goto(next_url, wait_until='domcontentloaded', timeout=30000)
+                    await asyncio.sleep(1.2)
+                    register_btn = await page.query_selector(btn_selector)
+                    curr_content = await page.content()
+                    next_url = extract_next_page_url(curr_content)
+
+            if not register_btn:
+                # Diagnostic précis si le bouton est manquant
                 page_text = await page.inner_text('body')
                 if "complet" in page_text.lower():
                     raise Exception("L'événement est complet.")
                 if "déjà inscrit" in page_text.lower():
                     raise Exception("Vous êtes déjà inscrit à cet événement.")
-                raise Exception("Bouton d'inscription introuvable sur la page de l'événement.")
+                raise Exception(f"Bouton d'inscription introuvable pour l'événement {event.source_id} ({event.title}).")
 
-            # Clic sur Inscription
+            # 3. Clic sur S'INSCRIRE
+            logger.info(f"[AutoRegister] Clic sur le bouton S'inscrire pour l'événement {event.source_id}...")
             await register_btn.click()
-            await page.wait_for_load_state('domcontentloaded', timeout=10000)
-            await asyncio.sleep(random.uniform(1.0, 2.0))
+            await asyncio.sleep(1.0)
 
-            # 4. Étape de validation du panier / réservation temporaire
-            # Sur UniCA Sport, l'ajout au panier réserve le créneau pendant 30 minutes
-            cart_confirm_btn = await page.query_selector(
-                'button#confirm_cart, input[value*="Ajouter au panier"], button:has-text("Ajouter au panier"), '
-                '.modal button.btn-primary:has-text("Confirmer")'
-            )
-            if cart_confirm_btn:
-                await cart_confirm_btn.click()
-                await page.wait_for_load_state('networkidle', timeout=15000)
-                await asyncio.sleep(1.0)
+            # 4. Attente du modal de confirmation et clic sur AJOUTER AU PANIER
+            confirm_btn_selector = '#modalInscription button#btn-confirmation, button#btn-confirmation'
+            await page.wait_for_selector(confirm_btn_selector, timeout=10000)
+            await asyncio.sleep(random.uniform(0.6, 1.2))
+
+            logger.info("[AutoRegister] Validation du créneau dans le panier (#btn-confirmation)...")
+            await page.click(confirm_btn_selector)
+            await page.wait_for_load_state('networkidle', timeout=15000)
+            await asyncio.sleep(1.5)
+
+            # 5. Vérification du Panier
+            cart_url = "https://sport.univ-cotedazur.fr/fr/UcaWeb/Panier"
+            await page.goto(cart_url, wait_until='domcontentloaded', timeout=20000)
+            await asyncio.sleep(1.5)
 
             # =========================================================================
             # ARRÊT EXPLICITE AVANT PAIEMENT (EXIGÉ PAR LE CAHIER DES CHARGES SECTION 4.2 & 7.4)
             # =========================================================================
-            # À cette étape, la place est verrouillée dans le panier pour 30 minutes.
-            # NOUS N'EFFECTUONS AUCUNE VALIDATION DE PAIEMENT NI CONFIRMATION BANCAIRE.
-            # L'utilisateur doit se connecter lui-même pour finaliser et payer.
+            # À cette étape, la place est réservée dans le panier pour 30 minutes.
+            # NOUS N'EFFECTUONS AUCUNE VALIDATION DE COMMANDE NI CONFIRMATION BANCAIRE.
+            # L'utilisateur finalise et paie lui-même sa réservation sur UniCA Sport.
             # =========================================================================
             logger.info(
-                "[AutoRegister - STOP SÉCURITÉ] La place est réservée dans le panier pour 30 minutes. "
+                f"[AutoRegister - STOP SÉCURITÉ] Créneau réservé 30 minutes pour {user.email} sur {event.title}. "
                 "Arrêt explicite avant paiement."
             )
 
             attempt.status = 'réussi'
             attempt.hold_expires_at = timezone.now() + timedelta(minutes=30)
-            attempt.error_message = "Place réservée avec succès pour 30 minutes. Finalisez votre commande sur UniCA Sport !"
+            attempt.error_message = f"Place réservée avec succès pour '{event.title}'. Vous disposez de 30 minutes pour finaliser sur votre panier UniCA Sport !"
             attempt.save()
             return True, attempt.error_message
 
