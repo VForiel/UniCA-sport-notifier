@@ -93,7 +93,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```
 Collez la clé obtenue dans la variable `FERNET_KEY=` de votre fichier `.env`.
 
-Définissez également un `SECRET_KEY` aléatoire et ajustez `DOMAIN_NAME` :
+Définissez également un `SECRET_KEY` aléatoire, un `POSTGRES_PASSWORD` aléatoire (obligatoire) et ajustez `DOMAIN_NAME` :
 ```env
 SECRET_KEY=votre-cle-secrete-django-tres-longue
 DOMAIN_NAME=sport-notifier.votre-domaine.fr

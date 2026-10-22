@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-unicasport_db}
       POSTGRES_USER: ${POSTGRES_USER:-unicasport}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unicasecret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:-unicasecret}@db:5432/${POSTGRES_DB:-unicasport_db}
+      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}@db:5432/${POSTGRES_DB:-unicasport_db}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CACHE_URL: redis://redis:6379/1
@@ -56,7 +56,7 @@ services:
     command: celery -A config worker -l INFO -Q celery,notifications -c 2
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:-unicasecret}@db:5432/${POSTGRES_DB:-unicasport_db}
+      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}@db:5432/${POSTGRES_DB:-unicasport_db}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CACHE_URL: redis://redis:6379/1
@@ -75,7 +75,7 @@ services:
     command: celery -A config beat -l INFO
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:-unicasecret}@db:5432/${POSTGRES_DB:-unicasport_db}
+      DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}@db:5432/${POSTGRES_DB:-unicasport_db}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CACHE_URL: redis://redis:6379/1
@@ -95,7 +95,7 @@ services:
     environment:
       PGHOST: db
       PGUSER: ${POSTGRES_USER:-unicasport}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-unicasecret}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}
       PGDATABASE: ${POSTGRES_DB:-unicasport_db}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
     volumes:
