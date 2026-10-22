@@ -85,6 +85,26 @@ services:
       redis:
         condition: service_healthy
 
+  backup:
+    image: postgres:16-alpine
+    container_name: unicasport_backup
+    restart: unless-stopped
+    # Même utilisateur que le propriétaire du dossier de sauvegarde sur l'hôte
+    user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-unicasport}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-unicasecret}
+      PGDATABASE: ${POSTGRES_DB:-unicasport_db}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes:
+      - ./docker/backup.sh:/backup.sh:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
   caddy:
     image: caddy:2-alpine
     container_name: unicasport_caddy

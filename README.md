@@ -186,6 +186,23 @@ Connectez-vous immédiatement sur `https://votre-domaine.fr/admin/` et modifiez 
 
 ---
 
+### Sauvegardes de la base
+
+Le service `backup` écrit chaque jour un dump compressé de PostgreSQL dans `./backups/unica-db-AAAA-MM-JJ.sql.gz`
+(dossier modifiable avec `BACKUP_DIR`, durée de conservation avec `BACKUP_KEEP_DAYS`, 30 jours par défaut).
+Il vérifie toutes les heures, donc un jour manqué (serveur éteint, redéploiement) est rattrapé au redémarrage.
+
+Restauration (écrase la base actuelle) :
+```bash
+docker compose stop web worker beat
+gunzip -c backups/unica-db-AAAA-MM-JJ.sql.gz | docker compose exec -T db sh -c 'psql -U $POSTGRES_USER -d postgres -c "DROP DATABASE $POSTGRES_DB WITH (FORCE)" -c "CREATE DATABASE $POSTGRES_DB" && psql -U $POSTGRES_USER $POSTGRES_DB'
+docker compose start web worker beat
+```
+
+Ces sauvegardes restent sur le même serveur : pensez à en copier régulièrement ailleurs.
+
+---
+
 ## 8. Configuration des Canaux Externes
 
 Toutes ces clés peuvent être renseignées dans `.env` ou modifiées directement dans l'interface admin (`ServerSettings`) :

@@ -50,3 +50,7 @@ test-results/
 # OS
 .DS_Store
 Thumbs.db
+
+# Sauvegardes PostgreSQL (service backup)
+backups/*
+!backups/.gitkeep
