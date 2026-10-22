@@ -6,7 +6,7 @@
     encode gzip zstd
 
     # Fichiers statiques servis directement par Caddy pour des performances optimales
-    handle /static/* {
+    handle_path /static/* {
         root * /srv/staticfiles
         file_server
     }
