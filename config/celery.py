@@ -22,6 +22,10 @@ app.conf.task_routes = {
 }
 
 app.conf.beat_schedule = {
+    'ensure-scan-running': {
+        'task': 'apps.scraping.tasks.ensure_scan_running_task',
+        'schedule': 5 * 60,
+    },
     'purge-old-records': {
         'task': 'apps.scraping.tasks.purge_old_records_task',
         'schedule': 24 * 60 * 60,

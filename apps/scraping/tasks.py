@@ -262,3 +262,25 @@ def purge_old_records_task(scan_log_days: int = 30):
     deleted_sims, _ = Event.objects.filter(is_simulated=True, first_detected_at__lt=now - timedelta(days=1)).delete()
     logger.info(f"Purge : {deleted_logs} journal(aux) de scan, {deleted_sims} événement(s) de test supprimés.")
     return {'scan_logs': deleted_logs, 'simulated_events': deleted_sims}
+
+
+@shared_task(queue='celery')
+def ensure_scan_running_task():
+    """
+    Relance la chaîne de scans si elle s'est arrêtée : elle se replanifie elle-même, mais rien ne la démarre
+    au lancement, et un redémarrage du worker perd le scan en attente.
+    """
+    from datetime import timedelta
+    settings_obj = ServerSettings.get_solo()
+    longest_wait = max(
+        settings_obj.day_interval_seconds + settings_obj.day_jitter_seconds,
+        settings_obj.night_interval_seconds + settings_obj.night_jitter_seconds,
+    )
+    # Marge de 5 minutes pour la durée du scan lui-même
+    stale_before = timezone.now() - timedelta(seconds=longest_wait + 300)
+    latest = ScanLog.objects.order_by('-timestamp').first()
+    if latest and latest.timestamp >= stale_before:
+        return False
+    logger.warning("Aucun scan récent : relance de la chaîne de scans.")
+    scan_events_task.apply_async(retry=False)
+    return True

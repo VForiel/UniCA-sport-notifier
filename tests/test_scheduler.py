@@ -54,3 +54,21 @@ class SchedulerTests(TestCase):
         delay = calculate_next_scan_delay(dt, self.settings)
         # La fonction impose un plancher de 5 secondes pour éviter le flood
         self.assertEqual(delay, 5)
+
+
+class ScanWatchdogTests(TestCase):
+    def test_restarts_chain_without_recent_scan(self):
+        from unittest.mock import patch
+        from apps.scraping.tasks import ensure_scan_running_task
+        with patch('apps.scraping.tasks.scan_events_task.apply_async') as mocked:
+            self.assertTrue(ensure_scan_running_task())
+            mocked.assert_called_once()
+
+    def test_leaves_running_chain_alone(self):
+        from unittest.mock import patch
+        from apps.scraping.models import ScanLog
+        from apps.scraping.tasks import ensure_scan_running_task
+        ScanLog.objects.create(execution_duration_seconds=1.0)
+        with patch('apps.scraping.tasks.scan_events_task.apply_async') as mocked:
+            self.assertFalse(ensure_scan_running_task())
+            mocked.assert_not_called()
