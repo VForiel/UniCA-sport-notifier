@@ -1,154 +1,83 @@
 {% extends "base.html" %}
+{% load ui %}
 
-{% block title %}Tableau de bord — UniCA Sport Notifier{% endblock %}
+{% block title %}Accueil · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 2rem;">
-  <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Bonjour, {{ user.email }} 👋</h1>
-  <p style="color: #94a3b8; font-size: 0.95rem;">Bienvenue sur votre espace de veille UniCA Sport.</p>
+<div class="page-head">
+  <h1>Tableau de bord</h1>
 </div>
 
-<!-- Stats Grid -->
-<div class="grid-stats">
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8;">
-      <span class="material-symbols-outlined">filter_list</span>
-    </div>
-    <div>
-      <div class="stat-value">{{ rules_count }}</div>
-      <div class="stat-label">Règle(s) configurée(s)</div>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">
-      <span class="material-symbols-outlined">notifications_active</span>
-    </div>
-    <div>
-      <div class="stat-value">{{ active_channels }}</div>
-      <div class="stat-label">Canal/aux de notif. actif(s)</div>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
-      <span class="material-symbols-outlined">key</span>
-    </div>
-    <div>
-      <div class="stat-value" style="font-size: 1.2rem; padding-top: 0.3rem;">
-        {% if has_creds %}
-          <span class="badge badge-success">Configuré</span>
-        {% else %}
-          <span class="badge badge-warning">Non renseigné</span>
-        {% endif %}
-      </div>
-      <div class="stat-label">Identifiants UniCA</div>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(192, 132, 252, 0.2); color: #c084fc;">
-      <span class="material-symbols-outlined">sync</span>
-    </div>
-    <div>
-      <div class="stat-value" style="font-size: 1.1rem; padding-top: 0.3rem;">
-        {% if latest_scan %}
-          <span class="badge {% if latest_scan.status == 'succès' %}badge-success{% else %}badge-error{% endif %}">
-            {{ latest_scan.status|upper }}
-          </span>
-        {% else %}
-          <span class="badge badge-info">En attente</span>
-        {% endif %}
-      </div>
-      <div class="stat-label">
-        {% if latest_scan %}Il y a {{ latest_scan.timestamp|timesince }}{% else %}Scan initial{% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
-  <!-- Latest Events Section -->
-  <div class="card">
-    <div class="card-header">
-      <h2 class="card-title"><span class="material-symbols-outlined">sports</span> Derniers événements détectés</h2>
-      <a href="/events/" style="font-size: 0.85rem;">Tout voir ({{ total_events }}) →</a>
-    </div>
-
-    {% if latest_events %}
-      <div style="display: flex; flex-direction: column; gap: 1rem;">
-        {% for evt in latest_events %}
-          <div style="padding: 0.85rem; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px solid var(--md-sys-color-outline); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              {% if evt.image_url %}
-                <img src="{{ evt.image_url }}" alt="{{ evt.title }}" style="width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--md-sys-color-outline);">
-              {% else %}
-                <div style="width: 64px; height: 64px; border-radius: 8px; background: rgba(2, 132, 199, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #38bdf8; border: 1px solid var(--md-sys-color-outline);">
-                  <span class="material-symbols-outlined" style="font-size: 28px;">sports_handball</span>
-                </div>
-              {% endif %}
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
-                  <h3 style="font-size: 1rem; color: #ffffff;">{{ evt.title }}</h3>
-                  {% if evt.event_type %}
-                    <span class="badge badge-info" style="font-size: 0.75rem;">{{ evt.event_type }}</span>
-                  {% endif %}
-                </div>
-                <p style="font-size: 0.85rem; color: #94a3b8;">
-                  📍 {{ evt.location|default:"Lieu non précisé" }} • 🕒 {{ evt.date_event|default:"Date inconnue" }}
-                </p>
-              </div>
-            </div>
-            <a href="{{ evt.url }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 0.85rem; flex-shrink: 0;">
-              Voir <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span>
-            </a>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p style="color: #94a3b8; font-style: italic;">Aucun événement scanné pour le moment. Le worker de scan est en cours de surveillance.</p>
-    {% endif %}
-  </div>
-
-  <!-- Side Column: Recent Actions & Diagnostics -->
+<dl class="stats">
   <div>
-    <!-- Reservation Attempts Card -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title"><span class="material-symbols-outlined">history_edu</span> Réservations récentes</h2>
-      </div>
-
-      {% if recent_attempts %}
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          {% for att in recent_attempts %}
-            <div style="padding: 0.75rem; background: rgba(30, 41, 59, 0.3); border-radius: 8px; border: 1px solid var(--md-sys-color-outline);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                <span style="font-size: 0.9rem; font-weight: 600;">{{ att.event.title }}</span>
-                <span class="badge {% if att.status == 'réussi' %}badge-success{% elif att.status == 'échoué' %}badge-error{% else %}badge-warning{% endif %}">
-                  {{ att.get_status_display }}
-                </span>
-              </div>
-              <p style="font-size: 0.75rem; color: #94a3b8;">{{ att.timestamp|date:"d/m/Y H:i" }}</p>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p style="font-size: 0.85rem; color: #94a3b8;">Aucune réservation automatique déclenchée récemment.</p>
-      {% endif %}
-    </div>
-
-    <!-- Quick Tips Card -->
-    <div class="card" style="background: rgba(2, 132, 199, 0.08); border-color: rgba(56, 189, 248, 0.25);">
-      <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: #38bdf8; display: flex; align-items: center; gap: 0.4rem;">
-        <span class="material-symbols-outlined">lightbulb</span> Conseil
-      </h3>
-      <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">
-        Activez les <strong>notifications Web Push</strong> pour recevoir une alerte instantanée sur votre smartphone dès qu'un créneau favori se libère !
-      </p>
-      <div style="margin-top: 1rem;">
-        <a href="/notifications/" class="btn btn-outline" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">Configurer</a>
-      </div>
-    </div>
+    <dt>Règles</dt>
+    <dd><a href="/rules/">{{ rules_count }}</a></dd>
   </div>
+  <div>
+    <dt>Canaux actifs</dt>
+    <dd><a href="/notifications/">{{ active_channels }}</a></dd>
+  </div>
+  <div>
+    <dt>Identifiants UniCA</dt>
+    <dd>{% if has_creds %}<span class="tag ok">Configurés</span>{% else %}<a href="/credentials/" class="tag warn">À renseigner</a>{% endif %}</dd>
+  </div>
+  <div>
+    <dt>Dernier scan</dt>
+    <dd>
+      {% if latest_scan %}
+        <span class="tag {% if latest_scan.status == 'succès' %}ok{% else %}danger{% endif %}">{{ latest_scan.get_status_display }}</span>
+        <span class="small muted">il y a {{ latest_scan.timestamp|timesince }}</span>
+      {% else %}
+        <span class="tag">En attente</span>
+      {% endif %}
+    </dd>
+  </div>
+</dl>
+
+<div class="columns">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Derniers événements</h2>
+      <a href="/events/" class="small">Tout voir ({{ total_events }})</a>
+    </div>
+    {% if latest_events %}
+      <ul class="list">
+        {% for evt in latest_events %}
+          <li>
+            {% if evt.image_url %}<img src="{{ evt.image_url }}" alt="" class="thumb" loading="lazy">{% endif %}
+            <div class="grow">
+              <div class="row"><span class="title">{{ evt.title }}</span>{% if evt.event_type %}<span class="tag">{{ evt.event_type }}</span>{% endif %}</div>
+              <div class="meta">
+                <span>{% icon 'clock' %}{{ evt.date_event|default:"Date inconnue" }}</span>
+                <span>{% icon 'pin' %}{{ evt.location|default:"Lieu non précisé" }}</span>
+              </div>
+            </div>
+            <a href="{{ evt.url }}" target="_blank" rel="noopener" class="btn sm" title="Ouvrir sur UniCA Sport">{% icon 'external' %}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Aucun événement détecté pour l'instant.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Réservations récentes</h2></div>
+    {% if recent_attempts %}
+      <ul class="list">
+        {% for att in recent_attempts %}
+          <li>
+            <div class="grow">
+              <div class="title">{{ att.event.title }}</div>
+              <div class="meta"><span>{{ att.timestamp|date:"d/m/Y H:i" }}</span></div>
+            </div>
+            <span class="tag {% if att.status == 'réussi' %}ok{% elif att.status == 'échoué' %}danger{% else %}warn{% endif %}">{{ att.get_status_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Aucune réservation automatique pour l'instant.</p>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

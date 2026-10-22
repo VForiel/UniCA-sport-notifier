@@ -1,25 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Déconnexion — UniCA Sport Notifier{% endblock %}
+{% block title %}Déconnexion · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="max-width: 460px; margin: 3rem auto;">
-  <div class="card" style="text-align: center; padding: 2.5rem 1.5rem;">
-    <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(244, 63, 94, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; color: #fb7185;">
-      <span class="material-symbols-outlined" style="font-size: 32px;">logout</span>
+<div class="entrance">
+  <div class="page-head"><h1>Déconnexion</h1></div>
+  <form method="post" action="{% url 'account_logout' %}" class="panel panel-body">
+    {% csrf_token %}
+    <p>Se déconnecter de UniCA Sport Notifier ?</p>
+    <div class="actions">
+      <a href="/" class="btn">Annuler</a>
+      <button type="submit" class="btn primary">Se déconnecter</button>
     </div>
-    <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Déconnexion</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.75rem;">Êtes-vous certain de vouloir vous déconnecter ?</p>
-
-    <form method="post" action="{% url 'account_logout' %}">
-      {% csrf_token %}
-      <div style="display: flex; justify-content: center; gap: 1rem;">
-        <a href="/" class="btn btn-outline">Annuler</a>
-        <button type="submit" class="btn btn-danger">
-          <span class="material-symbols-outlined">logout</span> Se déconnecter
-        </button>
-      </div>
-    </form>
-  </div>
+  </form>
 </div>
 {% endblock %}

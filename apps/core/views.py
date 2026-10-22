@@ -1,4 +1,8 @@
-from django.shortcuts import render
+from urllib.parse import urlencode
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.http import HttpResponse
 from django.conf import settings
 from apps.events.models import Event, FilterRule, RegistrationAttempt, UniCACredentials
@@ -38,3 +42,14 @@ def service_worker_view(request):
 
 def manifest_view(request):
     return render(request, 'manifest.json', content_type='application/manifest+json')
+
+
+def admin_login_view(request):
+    next_url = request.GET.get('next', '')
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = reverse('admin:index')
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('account_login')}?{urlencode({'next': next_url})}")
+    if not request.user.is_staff:
+        raise PermissionDenied
+    return redirect(next_url)

@@ -27,6 +27,20 @@ def send_password_reset_email(modeladmin, request, queryset):
             )
     modeladmin.message_user(request, f"{count} email(s) de réinitialisation envoyés avec succès.", messages.SUCCESS)
 
+@admin.action(description="Valider les comptes sélectionnés")
+def approve_accounts(modeladmin, request, queryset):
+    pending = list(queryset.filter(is_active=False))
+    for user in pending:
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        AuditLog.objects.create(
+            user=request.user,
+            action='ACCOUNT_APPROVAL',
+            ip_address=request.META.get('REMOTE_ADDR'),
+            details=f"Compte de {user.email} validé"
+        )
+    modeladmin.message_user(request, f"{len(pending)} compte(s) validé(s).", messages.SUCCESS)
+
 @admin.action(description="Basculer le rôle Administrateur (is_staff)")
 def toggle_staff_status(modeladmin, request, queryset):
     for user in queryset:
@@ -60,11 +74,11 @@ class CustomUserAdmin(BaseUserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
-    list_display = ('email', 'is_staff', 'rules_count', 'notification_channels', 'has_unica_credentials', 'date_joined')
+    list_display = ('email', 'is_active', 'is_staff', 'rules_count', 'notification_channels', 'has_unica_credentials', 'date_joined')
     list_filter = ('is_staff', 'is_active', 'date_joined')
     search_fields = ('email',)
     ordering = ('-date_joined',)
-    actions = [send_password_reset_email, toggle_staff_status, delete_accounts_cascade]
+    actions = [approve_accounts, send_password_reset_email, toggle_staff_status, delete_accounts_cascade]
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),

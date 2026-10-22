@@ -1,47 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Mon Profil — UniCA Sport Notifier{% endblock %}
+{% block title %}Profil · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="max-width: 600px; margin: 0 auto;">
-  <div style="margin-bottom: 2rem;">
-    <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Mon Profil</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem;">Informations de votre compte utilisateur.</p>
-  </div>
+<div class="narrow">
+  <div class="page-head"><h1>Profil</h1></div>
 
-  <div class="card">
-    <div class="form-group">
-      <label class="form-label">Adresse email</label>
-      <input type="text" class="form-control" value="{{ user.email }}" readonly disabled>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Date d'inscription</label>
-      <input type="text" class="form-control" value="{{ user.date_joined|date:'d/m/Y H:i' }}" readonly disabled>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Rôle</label>
-      <input type="text" class="form-control" value="{% if user.is_superuser %}Superadministrateur{% elif user.is_staff %}Administrateur{% else %}Utilisateur standard{% endif %}" readonly disabled>
-    </div>
-
-    <hr style="border: 0; border-top: 1px solid var(--md-sys-color-outline); margin: 2rem 0 1.5rem 0;">
-
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-      <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-        <a href="/accounts/password/change/" class="btn btn-outline" style="font-size: 0.85rem;">
-          <span class="material-symbols-outlined">password</span> Changer de mot de passe
-        </a>
-
-        <a href="/accounts/logout/" class="btn btn-outline" style="font-size: 0.85rem; border-color: rgba(244, 63, 94, 0.4); color: #fb7185;">
-          <span class="material-symbols-outlined">logout</span> Se déconnecter
-        </a>
+  <section class="panel panel-body">
+    <dl class="stats three">
+      <div><dt>Email</dt><dd class="small">{{ user.email }}</dd></div>
+      <div><dt>Inscrit le</dt><dd class="small">{{ user.date_joined|date:'d/m/Y' }}</dd></div>
+      <div><dt>Rôle</dt><dd class="small">{% if user.is_superuser %}Superadministrateur{% elif user.is_staff %}Administrateur{% else %}Utilisateur{% endif %}</dd></div>
+    </dl>
+    <div class="spread">
+      <div class="row">
+        <a href="/accounts/password/change/" class="btn">Changer de mot de passe</a>
+        <a href="/accounts/logout/" class="btn">Se déconnecter</a>
       </div>
-
-      <a href="/accounts/delete/" class="btn btn-danger" style="font-size: 0.85rem;">
-        <span class="material-symbols-outlined">person_remove</span> Supprimer mon compte
-      </a>
+      <a href="/accounts/delete/" class="btn danger">Supprimer mon compte</a>
     </div>
-  </div>
+  </section>
 </div>
 {% endblock %}

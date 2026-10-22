@@ -5,6 +5,32 @@ from .base import NotificationBackend
 
 logger = logging.getLogger(__name__)
 
+
+def get_mail_settings():
+    """Expéditeur et connexion SMTP : ServerSettings (admin) s'ils sont renseignés, sinon settings Django."""
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'notifications@sport-notifier.fr')
+    connection = None
+    try:
+        from apps.scraping.models import ServerSettings
+        server_settings = ServerSettings.get_solo()
+        if server_settings.smtp_from_email:
+            from_email = server_settings.smtp_from_email
+        if server_settings.smtp_host and server_settings.smtp_user:
+            from django.core.mail import get_connection
+            connection = get_connection(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                host=server_settings.smtp_host,
+                port=server_settings.smtp_port,
+                username=server_settings.smtp_user,
+                password=server_settings.smtp_password,
+                use_tls=server_settings.smtp_use_tls,
+                fail_silently=False,
+            )
+    except Exception:
+        pass
+    return from_email, connection
+
+
 class EmailBackend(NotificationBackend):
     def send(self, user, event, message: str, attempt=None) -> bool:
         if not user.email:
@@ -33,26 +59,7 @@ class EmailBackend(NotificationBackend):
 
         body += "Cordialement,\nVotre notificateur UniCA Sport"
 
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'notifications@sport-notifier.fr')
-        connection = None
-        try:
-            from apps.scraping.models import ServerSettings
-            server_settings = ServerSettings.get_solo()
-            if server_settings.smtp_from_email:
-                from_email = server_settings.smtp_from_email
-            if server_settings.smtp_host and server_settings.smtp_user:
-                from django.core.mail import get_connection
-                connection = get_connection(
-                    backend='django.core.mail.backends.smtp.EmailBackend',
-                    host=server_settings.smtp_host,
-                    port=server_settings.smtp_port,
-                    username=server_settings.smtp_user,
-                    password=server_settings.smtp_password,
-                    use_tls=server_settings.smtp_use_tls,
-                    fail_silently=False,
-                )
-        except Exception:
-            pass
+        from_email, connection = get_mail_settings()
 
         try:
             send_mail(

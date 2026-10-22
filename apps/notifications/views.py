@@ -1,11 +1,44 @@
 import json
+import logging
+import re
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseBadRequest
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.conf import settings
+from django_ratelimit.decorators import ratelimit
 from .models import NotificationPreference, PushSubscription
+
+logger = logging.getLogger(__name__)
+
+# Seules les URL de webhook Discord sont acceptées : le serveur ne doit pas pouvoir être dirigé
+# vers une adresse arbitraire (réseau Docker interne compris).
+DISCORD_WEBHOOK_RE = re.compile(r'^https://(?:(?:ptb|canary)\.)?discord(?:app)?\.com/api/webhooks/\d+/[\w-]+$')
+DISCORD_USER_ID_RE = re.compile(r'^\d{15,25}$')
+TELEGRAM_CHAT_ID_RE = re.compile(r'^(-?\d{1,20}|@\w{4,64})$')
+PHONE_RE = re.compile(r'^\+?\d{8,15}$')
+PING_MODES = {'none', 'favorite_only', 'all'}
+
+
+def validate_channel_inputs(post):
+    """Retourne la liste des erreurs de saisie des canaux (champs vides acceptés)."""
+    errors = []
+    discord_url = post.get('discord_webhook_url', '').strip()
+    if discord_url and not DISCORD_WEBHOOK_RE.match(discord_url):
+        errors.append("L'URL du webhook Discord doit être de la forme https://discord.com/api/webhooks/…")
+    discord_user_id = post.get('discord_user_id', '').strip()
+    if discord_user_id and not DISCORD_USER_ID_RE.match(discord_user_id):
+        errors.append("L'identifiant utilisateur Discord ne doit contenir que des chiffres.")
+    if post.get('discord_ping_mode', 'none') not in PING_MODES:
+        errors.append("Mode de mention Discord inconnu.")
+    chat_id = post.get('telegram_chat_id', '').strip()
+    if chat_id and not TELEGRAM_CHAT_ID_RE.match(chat_id):
+        errors.append("Le Chat ID Telegram doit être un nombre (ou @nom_de_canal).")
+    phone = post.get('whatsapp_phone', '').strip().replace(' ', '').replace('-', '')
+    if phone and not PHONE_RE.match(phone):
+        errors.append("Le numéro WhatsApp doit être au format international (ex : +33612345678).")
+    return errors
 
 @login_required
 def preferences_view(request):
@@ -14,6 +47,12 @@ def preferences_view(request):
     prefs = {p.channel: p for p in user.notification_preferences.all()}
 
     if request.method == 'POST':
+        errors = validate_channel_inputs(request.POST)
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('notification_preferences')
+
         # Traitement Email
         email_active = bool(request.POST.get('email_active'))
         pref_email, _ = NotificationPreference.objects.get_or_create(user=user, channel='email')
@@ -103,14 +142,24 @@ def push_subscribe_view(request):
         pref_push.save()
 
         return JsonResponse({'status': 'success', 'message': 'Abonnement Push enregistré'})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    except (ValueError, AttributeError):
+        return JsonResponse({'error': 'Données de souscription invalides'}, status=400)
+    except Exception:
+        logger.exception("Enregistrement d'un abonnement Push impossible")
+        return JsonResponse({'error': "Erreur serveur lors de l'enregistrement"}, status=500)
 
 
 @login_required
+@require_POST
+@ratelimit(key='user', rate='5/h', block=False)
 def simulate_test_notification_view(request):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Méthode POST requise.")
+    if getattr(request, 'limited', False):
+        messages.error(request, "Trop de tests envoyés : réessayez dans une heure.")
+        if request.headers.get('HX-Request'):
+            return render(request, 'notifications/partials/test_result.html', {
+                'results': ["Limite atteinte : 5 tests par heure."],
+            })
+        return redirect('notification_preferences')
 
     import time
     import uuid
@@ -120,7 +169,7 @@ def simulate_test_notification_view(request):
 
     user = request.user
     source_id = f"sim_{int(time.time())}_{uuid.uuid4().hex[:6]}"
-    title = request.POST.get('title', 'KAYAK & Calanques [TEST SIMULATION]').strip()
+    title = 'KAYAK & Calanques [TEST SIMULATION]'
     event_type = 'Sortie'
     date_event = 'Demain 10:00 - 17:00'
     location = 'Base Nautique Valrose'
@@ -160,15 +209,17 @@ def simulate_test_notification_view(request):
                 status = "Envoyé avec succès" if ok else "Échec / Configuration incomplète"
                 results.append(f"{pref.get_channel_display()} : {status}")
 
-    summary = " • ".join(results)
-    messages.info(request, f"Simulation envoyée pour '{event.title}' ! Résultat des canaux : {summary}")
+    # L'événement fictif n'a servi qu'à construire les messages
+    event_title = event.title
+    event.delete()
 
+    summary = " • ".join(results)
     if request.headers.get('HX-Request'):
         return render(request, 'notifications/partials/test_result.html', {
-            'event': event,
+            'title': event_title,
             'results': results,
         })
 
-    next_url = request.POST.get('next', 'notification_preferences')
-    return redirect(next_url)
+    messages.info(request, f"Test envoyé. Résultat des canaux : {summary}")
+    return redirect('notification_preferences')
 

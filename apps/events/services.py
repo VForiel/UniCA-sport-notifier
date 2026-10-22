@@ -80,7 +80,7 @@ def matches_rule(rule, title: str, description: str = "") -> bool:
     return False
 
 
-def evaluate_event_for_user(user, event):
+def evaluate_event_for_user(user, event, rules=None):
     """
     Évalue l'événement par rapport à toutes les règles d'un utilisateur.
     Retourne :
@@ -88,7 +88,8 @@ def evaluate_event_for_user(user, event):
       - is_favorite: bool
       - matching_rules: list
     """
-    rules = user.filter_rules.all()
+    if rules is None:
+        rules = user.filter_rules.all()
     matching_rules = []
     is_blacklisted = False
     is_favorite = False

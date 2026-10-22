@@ -1,29 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Supprimer mon compte — UniCA Sport Notifier{% endblock %}
+{% block title %}Supprimer mon compte · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="max-width: 550px; margin: 3rem auto;">
-  <div class="card" style="border-color: rgba(244, 63, 94, 0.4); text-align: center; padding: 2.5rem 1.5rem;">
-    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(244, 63, 94, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem auto; color: #fb7185;">
-      <span class="material-symbols-outlined" style="font-size: 36px;">warning</span>
+<div class="entrance">
+  <div class="page-head"><h1>Supprimer mon compte</h1></div>
+  <form method="post" action="/accounts/delete/" class="panel panel-body">
+    {% csrf_token %}
+    <p>La suppression est <strong>définitive</strong> : règles, identifiants UniCA chiffrés, abonnements push et historique de réservations seront effacés.</p>
+    <div class="actions">
+      <a href="/accounts/profile/" class="btn">Annuler</a>
+      <button type="submit" class="btn danger solid">Supprimer définitivement</button>
     </div>
-
-    <h1 style="font-size: 1.5rem; margin-bottom: 0.75rem; color: #fecdd3;">Confirmer la suppression du compte</h1>
-    <p style="font-size: 0.95rem; color: #cbd5e1; margin-bottom: 1.75rem; line-height: 1.5;">
-      Cette action est <strong>définitive et irréversible</strong>.<br>
-      Elle supprimera l'intégralité de vos données personnelles : règles de filtrage, identifiants UniCA chiffrés, abonnements Push et historique de réservations.
-    </p>
-
-    <form method="post" action="/accounts/delete/">
-      {% csrf_token %}
-      <div style="display: flex; justify-content: center; gap: 1rem;">
-        <a href="/accounts/profile/" class="btn btn-outline">Annuler</a>
-        <button type="submit" class="btn btn-danger" style="background: #e11d48; color: #ffffff;">
-          <span class="material-symbols-outlined">delete_forever</span> Confirmer la suppression
-        </button>
-      </div>
-    </form>
-  </div>
+  </form>
 </div>
 {% endblock %}

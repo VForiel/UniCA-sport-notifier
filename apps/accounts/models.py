@@ -51,6 +51,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 class AuditLog(models.Model):
     ACTION_CHOICES = [
         ('LOGIN', 'Connexion'),
+        ('SIGNUP', "Demande d'accès"),
+        ('ACCOUNT_APPROVAL', 'Validation de compte'),
         ('ROLE_CHANGE', 'Modification de rôle'),
         ('ACCOUNT_DELETION', 'Suppression de compte'),
         ('CREDENTIALS_UPDATE', 'Mise à jour des identifiants'),

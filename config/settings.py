@@ -22,6 +22,10 @@ if env_file.exists():
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 
+if not DEBUG and SECRET_KEY == 'unsafe-default-secret-key-replace-in-production':
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("SECRET_KEY doit être défini dans l'environnement en production.")
+
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0', 'web', 'testserver'])
 
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:8000', 'http://127.0.0.1:8000'])
@@ -61,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.core.middleware.ContentSecurityPolicyMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -103,7 +108,10 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_VERIFICATION = 'none'  # Simplifies setup and local tests
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+# Inscription sur cooptation : tout nouveau compte est inactif jusqu'à validation par un administrateur
+ACCOUNT_ADAPTER = 'apps.accounts.adapters.ApprovalAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'apps.accounts.adapters.ApprovalSocialAccountAdapter'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
@@ -128,6 +136,13 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Cache partagé entre les workers Gunicorn (limites de débit allauth et django-ratelimit)
+CACHE_URL = env('CACHE_URL', default='')
+if CACHE_URL:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': CACHE_URL}}
+else:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
@@ -177,7 +192,9 @@ CSRF_COOKIE_HTTPONLY = False  # Allows HTMX to read csrftoken cookie if needed
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     # Derrière Caddy (TLS terminé au proxy) : faire confiance à X-Forwarded-Proto
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Les en-têtes de sécurité sont posés par Django seul (les proxys Caddy n'en ajoutent pas)
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True

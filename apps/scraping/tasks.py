@@ -94,20 +94,19 @@ def auto_register_task(self, user_id: int, event_id: int, attempt_id: int):
         return False
 
     success, message = perform_auto_registration_playwright(user, event, attempt_id)
+    will_retry = not success and self.request.retries < self.max_retries
 
-    # Notification immédiate du résultat de la réservation
-    notif_msg = (
-        f"Résultat réservation '{event.title}' : {message}"
-    )
-    safe_dispatch_task(
-        dispatch_notification_task,
-        user_id=user.id,
-        event_id=event.id,
-        message=notif_msg,
-        attempt_id=attempt.id
-    )
+    # Une seule notification du résultat : au succès, ou après le dernier essai
+    if not will_retry:
+        safe_dispatch_task(
+            dispatch_notification_task,
+            user_id=user.id,
+            event_id=event.id,
+            message=f"Résultat réservation '{event.title}' : {message}",
+            attempt_id=attempt.id
+        )
 
-    if not success and self.request.retries < self.max_retries:
+    if will_retry:
         # Erreur transitoire potentielle : nouvel essai avec backoff
         countdown = 15 * (self.request.retries + 1)
         logger.warning(f"Nouvelle tentative auto_register dans {countdown}s...")
@@ -138,7 +137,8 @@ def scan_events_task(self, auto_reschedule: bool = True):
         scraped_events = scrape_unica_events_sync()
         events_found_count = len(scraped_events)
         User = get_user_model()
-        all_users = User.objects.filter(is_active=True)
+        # Règles et identifiants chargés une fois pour tous les utilisateurs
+        all_users = User.objects.filter(is_active=True).prefetch_related('filter_rules').select_related('unica_credentials')
 
         for data in scraped_events:
             existing_event = Event.objects.filter(source_id=data['source_id']).first()
@@ -251,3 +251,14 @@ def scan_events_task(self, auto_reschedule: bool = True):
         'new_events': new_events_count,
         'duration': duration,
     }
+
+
+@shared_task(queue='celery')
+def purge_old_records_task(scan_log_days: int = 30):
+    """Purge quotidienne : journaux de scan anciens et événements de test oubliés."""
+    from datetime import timedelta
+    now = timezone.now()
+    deleted_logs, _ = ScanLog.objects.filter(timestamp__lt=now - timedelta(days=scan_log_days)).delete()
+    deleted_sims, _ = Event.objects.filter(is_simulated=True, first_detected_at__lt=now - timedelta(days=1)).delete()
+    logger.info(f"Purge : {deleted_logs} journal(aux) de scan, {deleted_sims} événement(s) de test supprimés.")
+    return {'scan_logs': deleted_logs, 'simulated_events': deleted_sims}

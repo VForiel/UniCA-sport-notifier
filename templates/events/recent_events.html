@@ -1,87 +1,51 @@
 {% extends "base.html" %}
+{% load ui %}
 
-{% block title %}Événements Récents — UniCA Sport Notifier{% endblock %}
+{% block title %}Événements · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="max-width: 1000px; margin: 0 auto;">
-  <div style="margin-bottom: 2rem;">
-    <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Événements UniCA Sport</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem;">
-      Flux des événements extraits en direct de sport.univ-cotedazur.fr avec évaluation de vos règles.
-    </p>
-  </div>
+<div class="page-head">
+  <h1>Événements</h1>
+  <p>Les 50 derniers événements relevés sur sport.univ-cotedazur.fr, évalués selon vos règles.</p>
+</div>
 
-  <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-    {% for item in evaluated_events %}
-      <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
-        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
-          <!-- Image plus grande de l'événement -->
-          <div style="flex: 0 0 240px; max-width: 100%; height: 180px; border-radius: 12px; overflow: hidden; border: 1px solid var(--md-sys-color-outline); position: relative; background: rgba(15, 23, 42, 0.6);">
-            {% if item.event.image_url %}
-              <img src="{{ item.event.image_url }}" alt="{{ item.event.title }}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-            {% else %}
-              <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(2, 132, 199, 0.12); color: #38bdf8;">
-                <span class="material-symbols-outlined" style="font-size: 48px;">sports_handball</span>
-                <span style="font-size: 0.8rem; margin-top: 0.25rem; color: #94a3b8;">UniCA Sport</span>
-              </div>
-            {% endif %}
-          </div>
-
-          <!-- Contenu et informations de l'événement -->
-          <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
-                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-                  <h2 style="font-size: 1.3rem; color: #ffffff;">{{ item.event.title }}</h2>
-                  {% if item.event.event_type %}
-                    <span class="badge badge-info">{{ item.event.event_type }}</span>
-                  {% endif %}
-
-                  <!-- Badges de filtrage utilisateur -->
-                  {% if item.evaluation.is_blacklisted %}
-                    <span class="badge badge-error">🚫 Ignoré (Liste noire)</span>
-                  {% elif item.evaluation.is_favorite %}
-                    <span class="badge badge-warning">⭐ Favori</span>
-                  {% else %}
-                    <span class="badge badge-info" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3);">Standard</span>
-                  {% endif %}
-                </div>
-
-                <a href="{{ item.event.url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size: 0.85rem; padding: 0.45rem 1rem;">
-                  Ouvrir sur UniCA <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span>
-                </a>
-              </div>
-
-              <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.6rem;">
-                <span>📍 {{ item.event.location|default:"Lieu non précisé" }}</span>
-                <span>🕒 {{ item.event.date_event|default:"Date non précisée" }}</span>
-                {% if item.event.supervisor %}
-                  <span>👤 {{ item.event.supervisor }}</span>
-                {% endif %}
-              </div>
-
-              {% if item.event.description %}
-                <div style="font-size: 0.9rem; color: #cbd5e1; background: rgba(15, 23, 42, 0.5); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); max-height: 90px; overflow-y: auto;">
-                  {{ item.event.description|linebreaksbr }}
-                </div>
+<section class="panel">
+  {% if evaluated_events %}
+    <ul class="list">
+      {% for item in evaluated_events %}
+        <li>
+          {% if item.event.image_url %}<img src="{{ item.event.image_url }}" alt="" class="thumb lg" loading="lazy">{% endif %}
+          <div class="grow">
+            <div class="row">
+              <span class="title">{{ item.event.title }}</span>
+              {% if item.event.event_type %}<span class="tag">{{ item.event.event_type }}</span>{% endif %}
+              {% if item.evaluation.is_blacklisted %}
+                <span class="tag danger">{% icon 'ban' %}Ignoré</span>
+              {% elif item.evaluation.is_favorite %}
+                <span class="tag accent">{% icon 'star' %}Favori</span>
+              {% endif %}
+              {% if item.attempt %}
+                <span class="tag {% if item.attempt.status == 'réussi' %}ok{% elif item.attempt.status == 'échoué' %}danger{% else %}warn{% endif %}">Réservation : {{ item.attempt.get_status_display }}</span>
               {% endif %}
             </div>
-
-            {% if item.attempt %}
-              <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(2, 132, 199, 0.1); border-radius: 6px; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between;">
-                <span>Réservation automatique : <strong>{{ item.attempt.get_status_display }}</strong></span>
-                <span style="font-size: 0.75rem; color: #94a3b8;">{{ item.attempt.timestamp|date:"d/m/Y H:i" }}</span>
-              </div>
+            <div class="meta">
+              <span>{% icon 'clock' %}{{ item.event.date_event|default:"Date non précisée" }}</span>
+              <span>{% icon 'pin' %}{{ item.event.location|default:"Lieu non précisé" }}</span>
+              {% if item.event.supervisor %}<span>{% icon 'user' %}{{ item.event.supervisor }}</span>{% endif %}
+            </div>
+            {% if item.event.description %}
+              <details>
+                <summary>Description</summary>
+                <p>{{ item.event.description }}</p>
+              </details>
             {% endif %}
           </div>
-        </div>
-      </div>
-    {% empty %}
-      <div class="card" style="text-align: center; padding: 3rem; color: #94a3b8;">
-        <span class="material-symbols-outlined" style="font-size: 48px; color: #64748b; margin-bottom: 0.5rem;">event_busy</span>
-        <p>Aucun événement disponible pour le moment. Le worker de scraping effectue des veilles régulières.</p>
-      </div>
-    {% endfor %}
-  </div>
-</div>
+          <a href="{{ item.event.url }}" target="_blank" rel="noopener" class="btn sm">UniCA {% icon 'external' %}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Aucun événement pour l'instant. Le portail est vérifié toutes les minutes en journée.</p>
+  {% endif %}
+</section>
 {% endblock %}

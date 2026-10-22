@@ -33,9 +33,10 @@ Application Web Progressive (PWA) de veille automatique, de filtrage personnalis
   - Consentement formel requis et limitation stricte à 2 réservations simultanées pour préserver l'équité sportive.
 - **Multi-canal de notifications** : Web Push PWA (norme standard VAPID Push API), Webhook Discord (Embeds riches), Bot Telegram, WhatsApp Business (Meta Cloud API officielle), Email SMTP.
 - **Interface Progressive Web App (PWA)** :
-  - Design Material You (Material Design 3) basé sur les Web Components `@material/web`.
-  - Dynamisme fluide avec HTMX (ajout/suppression de règles sans rechargement).
+  - Interface sobre (thème clair/sombre selon le système), sans police ni script externe.
+  - HTMX servi localement (ajout/suppression de règles sans rechargement).
   - Installable sur mobile et ordinateur avec `manifest.json` et `service-worker.js`.
+- **Accès sur invitation** : tout nouveau compte est créé inactif ; les administrateurs reçoivent un email et le valident depuis l'admin (action « Valider les comptes sélectionnés »).
 - **Administration Django sur-mesure** :
   - Singleton `ServerSettings` éditable à chaud (intervalles, jitter, clés API).
   - Actions rapides sur les utilisateurs : réinitialisation de mot de passe par email, suppression de compte en cascade (RGPD), bascule de droits.
@@ -51,7 +52,7 @@ Application Web Progressive (PWA) de veille automatique, de filtrage personnalis
 - **Scraping & Automatisation** : Playwright Async (Chromium headless) + `playwright-stealth`
 - **Authentification** : `django-allauth` (Email + Google OAuth2)
 - **Notifications Web Push** : `pywebpush` + Clés VAPID (zéro dépendance Firebase)
-- **Frontend** : Django Server-Side Rendering + `@material/web` CDN + HTMX 2.0
+- **Frontend** : Django Server-Side Rendering + CSS maison + HTMX 2.0 (servi localement)
 - **Reverse Proxy & TLS** : Caddy 2 (certificats Let's Encrypt / ZeroSSL automatiques)
 
 ---
@@ -60,7 +61,10 @@ Application Web Progressive (PWA) de veille automatique, de filtrage personnalis
 
 1. **Chiffrement réversible des identifiants UniCA** : Chiffrés avec AES-128 via `cryptography.fernet.Fernet`. La clé `FERNET_KEY` est impérativement lue depuis la variable d'environnement et n'est **jamais** stockée en base de données.
 2. **Protection CSRF & Sessions Sécurisées** : Cookies `HttpOnly`, `Secure` et `SameSite=Lax` activés en production.
-3. **Journalisation d'audit** : Connexions, modifications de rôles et suppressions de comptes consignées dans `AuditLog`.
+3. **Journalisation d'audit** : Demandes d'accès, validations, modifications de rôles et suppressions de comptes consignées dans `AuditLog`.
+4. **En-têtes de sécurité** : Django pose HSTS, Content-Security-Policy (aucune ressource tierce hormis les images d'événements), `X-Frame-Options` et `Referrer-Policy` ; les proxys Caddy n'en ajoutent pas.
+5. **Limitation des abus** : connexion admin via allauth (tentatives limitées), test de notification limité à 5 envois par heure, webhooks restreints à `discord.com`, cache Redis partagé entre workers (`CACHE_URL`).
+6. **Purge automatique** : Celery beat supprime chaque jour les `ScanLog` de plus de 30 jours et les événements de test.
 
 ---
 

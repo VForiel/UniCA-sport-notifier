@@ -12,6 +12,10 @@ class DiscordWebhookBackend(NotificationBackend):
             return False
 
         webhook_url = pref.config.get('webhook_url')
+        from apps.notifications.views import DISCORD_WEBHOOK_RE
+        if not DISCORD_WEBHOOK_RE.match(webhook_url):
+            logger.warning(f"DiscordWebhookBackend: URL de webhook refusée pour {user.email}")
+            return False
 
         color = 0x00A86B if attempt and attempt.status == 'réussi' else 0x3498DB
         if attempt and attempt.status == 'échoué':
@@ -80,7 +84,7 @@ class DiscordWebhookBackend(NotificationBackend):
         }
 
         try:
-            resp = requests.post(webhook_url, json=payload, timeout=10)
+            resp = requests.post(webhook_url, json=payload, timeout=10, allow_redirects=False)
             if resp.status_code in [200, 204]:
                 logger.info(f"DiscordWebhookBackend: Envoyé avec succès à {user.email}")
                 return True

@@ -1,51 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}UniCA Sport Notifier — Veille et Inscription Automatisée{% endblock %}
+{% block title %}UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="text-align: center; max-width: 800px; margin: 3rem auto;">
-  <div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 20px; background: rgba(2, 132, 199, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 1.5rem;">
-    <span class="material-symbols-outlined" style="font-size: 38px; color: #38bdf8;">sports_handball</span>
-  </div>
-  <h1 style="font-size: 2.8rem; line-height: 1.2; margin-bottom: 1.25rem;">Ne manquez plus aucun événement UniCA Sport</h1>
-  <p style="font-size: 1.15rem; color: #94a3b8; margin-bottom: 2.5rem;">
-    Surveillance automatisée du portail officiel d'Université Côte d'Azur, alertes instantanées sur vos canaux favoris et réservation anticipée 30 minutes.
+<div class="hero">
+  <h1>Alertes et pré-réservation pour UniCA Sport</h1>
+  <p class="muted">
+    Le portail <a href="https://sport.univ-cotedazur.fr/fr/UcaWeb/Evenement" rel="noopener">sport.univ-cotedazur.fr</a>
+    est surveillé en continu. Dès qu'un événement correspond à vos règles, vous êtes prévenu, et la place peut être
+    mise de côté dans votre panier.
   </p>
-
-  <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 4rem;">
-    <a href="/accounts/signup/" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.85rem 2rem;">
-      <span class="material-symbols-outlined">rocket_launch</span> Commencer gratuitement
-    </a>
-    <a href="/accounts/login/" class="btn btn-outline" style="font-size: 1.05rem; padding: 0.85rem 2rem;">
-      <span class="material-symbols-outlined">login</span> Se connecter
-    </a>
+  <ul>
+    <li><strong>Règles par mot-clé</strong> : favoris à surveiller, liste noire à ignorer.</li>
+    <li><strong>Notifications</strong> : email, push navigateur, Discord, Telegram ou WhatsApp.</li>
+    <li><strong>Pré-réservation</strong> : la place est bloquée 30 minutes dans votre panier, sans jamais payer à votre place.</li>
+  </ul>
+  <div class="row">
+    <a href="/accounts/login/" class="btn primary">Se connecter</a>
+    <a href="/accounts/signup/" class="btn">Demander un accès</a>
   </div>
-
-  <!-- Features Grid -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; text-align: left;">
-    <div class="card" style="margin-bottom: 0;">
-      <span class="material-symbols-outlined" style="font-size: 32px; color: #38bdf8; margin-bottom: 0.75rem;">radar</span>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Scraping Invisible</h3>
-      <p style="font-size: 0.9rem; color: #94a3b8;">Worker Playwright autonome avec stealth, bascule jour/nuit et jitter aléatoire anti-détection.</p>
-    </div>
-
-    <div class="card" style="margin-bottom: 0;">
-      <span class="material-symbols-outlined" style="font-size: 32px; color: #34d399; margin-bottom: 0.75rem;">checklist</span>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Filtrage Sur-Mesure</h3>
-      <p style="font-size: 0.9rem; color: #94a3b8;">Définissez vos règles : liste noire pour ignorer, ou favoris pour bloquer la place dès sa sortie.</p>
-    </div>
-
-    <div class="card" style="margin-bottom: 0;">
-      <span class="material-symbols-outlined" style="font-size: 32px; color: #fbbf24; margin-bottom: 0.75rem;">lock_clock</span>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Réservation 30 min Sécurisée</h3>
-      <p style="font-size: 0.9rem; color: #94a3b8;">Bloque votre place dans le panier. S'arrête formellement avant tout paiement bancaire.</p>
-    </div>
-
-    <div class="card" style="margin-bottom: 0;">
-      <span class="material-symbols-outlined" style="font-size: 32px; color: #c084fc; margin-bottom: 0.75rem;">send</span>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Multi-Canal & PWA</h3>
-      <p style="font-size: 0.9rem; color: #94a3b8;">Alertes WebPush, Discord, Telegram, WhatsApp Business API et Email au choix.</p>
-    </div>
-  </div>
+  <p class="small muted">L'accès se fait sur invitation : chaque nouveau compte est validé par un administrateur.</p>
 </div>
 {% endblock %}

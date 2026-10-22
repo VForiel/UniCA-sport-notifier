@@ -1,174 +1,110 @@
 {% extends "base.html" %}
+{% load ui %}
 
-{% block title %}Canaux de Notification — UniCA Sport Notifier{% endblock %}
+{% block title %}Notifications · UniCA Sport Notifier{% endblock %}
 
 {% block content %}
-<div style="max-width: 850px; margin: 0 auto;">
-  <div style="margin-bottom: 2rem;">
-    <h1 style="font-size: 1.8rem; margin-bottom: 0.25rem;">Préférences de Notification</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem;">
-      Sélectionnez les canaux de votre choix pour être alerté en temps réel dès la détection de nouveaux événements sportifs.
-    </p>
+<div class="narrow">
+  <div class="page-head">
+    <h1>Notifications</h1>
+    <p>Choisissez où recevoir les alertes. Sans canal actif, elles partent par email.</p>
   </div>
 
-  <!-- Web Push PWA Activation Section -->
-  <div class="card" style="border-color: rgba(2, 132, 199, 0.4); background: rgba(2, 132, 199, 0.06);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-      <div style="display: flex; gap: 1rem; align-items: center;">
-        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(2, 132, 199, 0.2); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
-          <span class="material-symbols-outlined" style="font-size: 28px;">notifications_active</span>
-        </div>
-        <div>
-          <h2 style="font-size: 1.15rem; color: #ffffff;">Notifications Push Web (PWA)</h2>
-          <p style="font-size: 0.85rem; color: #94a3b8;">
-            Alerte directe sur votre navigateur ou écran de verrouillage de smartphone (norme VAPID Push API).
-          </p>
-          <div id="push-status-msg" style="font-size: 0.85rem; font-weight: 500; margin-top: 0.25rem; color: #38bdf8;">
-            {% if push_sub_count > 0 %}
-              <span class="badge badge-success">✅ {{ push_sub_count }} appareil(s) abonné(s)</span>
-            {% else %}
-              <span class="badge badge-warning">Aucun appareil abonné</span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <button type="button" class="btn btn-primary" onclick="subscribeUserToPush()">
-        <span class="material-symbols-outlined">add_alert</span> Activer les Push sur cet appareil
-      </button>
-    </div>
-  </div>
-
-  <!-- Test Notification Simulation Card -->
-  <div class="card" style="border-color: rgba(56, 189, 248, 0.35); background: rgba(15, 23, 42, 0.85); margin-bottom: 1.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-      <div style="display: flex; gap: 1rem; align-items: center;">
-        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
-          <span class="material-symbols-outlined" style="font-size: 28px;">science</span>
-        </div>
-        <div>
-          <h2 style="font-size: 1.15rem; color: #ffffff;">Test des Notifications</h2>
-          <p style="font-size: 0.85rem; color: #94a3b8;">
-            Simule instantanément la détection d'un nouvel événement pour vérifier la réception sur vos canaux configurés.
+  <section class="panel">
+    <ul class="list">
+      <li>
+        <div class="grow">
+          <div class="title">Push sur cet appareil</div>
+          <p class="small muted">Notification du navigateur ou de l'écran de verrouillage du téléphone.</p>
+          <p class="small" id="push-status-msg">
+            {% if push_sub_count > 0 %}<span class="tag ok">{{ push_sub_count }} appareil{{ push_sub_count|pluralize }} abonné{{ push_sub_count|pluralize }}</span>{% else %}<span class="tag">Aucun appareil abonné</span>{% endif %}
           </p>
         </div>
-      </div>
+        <button type="button" class="btn" data-push-subscribe>{% icon 'bell' %}Activer</button>
+      </li>
+      <li>
+        <div class="grow">
+          <div class="title">Envoyer un test</div>
+          <p class="small muted">Envoie un faux événement sur tous vos canaux actifs (5 par heure maximum).</p>
+          <div id="test-simulation-result"></div>
+        </div>
+        <form method="post" action="{% url 'simulate_notification_test' %}" hx-post="{% url 'simulate_notification_test' %}" hx-target="#test-simulation-result" hx-swap="innerHTML">
+          {% csrf_token %}
+          <button type="submit" class="btn">{% icon 'send' %}Tester</button>
+        </form>
+      </li>
+    </ul>
+  </section>
 
-      <form method="post" action="{% url 'simulate_notification_test' %}" hx-post="{% url 'simulate_notification_test' %}" hx-target="#test-simulation-result" hx-swap="innerHTML">
-        {% csrf_token %}
-        <input type="hidden" name="title" value="KAYAK & Calanques [TEST NOTIFICATION]">
-        <input type="hidden" name="next" value="/notifications/">
-        <button type="submit" class="btn btn-outline" style="border-color: #38bdf8; color: #38bdf8;">
-          <span class="material-symbols-outlined">send</span> Simuler un événement de test
-        </button>
-      </form>
-    </div>
-    <div id="test-simulation-result"></div>
-  </div>
-
-  <!-- Formulaire des autres canaux -->
-  <form method="post" action="/notifications/">
+  <form method="post" action="/notifications/" class="stack mt-lg">
     {% csrf_token %}
 
-    <!-- Canal 1 : Email -->
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span class="material-symbols-outlined" style="color: #38bdf8;">mail</span>
-          <h3 style="font-size: 1.1rem; color: #ffffff;">Email</h3>
-        </div>
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-          <input type="checkbox" name="email_active" value="1" {% if pref_email.is_active or not pref_email %}checked{% endif %} style="width: 20px; height: 20px; accent-color: #0284c7;">
-          <span style="font-size: 0.9rem; font-weight: 600;">Activer</span>
-        </label>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Email</h2>
+        <label class="check"><input type="checkbox" name="email_active" value="1" {% if pref_email.is_active or not pref_email %}checked{% endif %}> Actif</label>
       </div>
-      <p style="font-size: 0.85rem; color: #94a3b8;">
-        Les notifications seront envoyées à votre adresse de compte : <strong>{{ user.email }}</strong>
-      </p>
-    </div>
+      <div class="panel-body">
+        <p class="muted">Envoyé à <strong>{{ user.email }}</strong>.</p>
+      </div>
+    </section>
 
-    <!-- Canal 2 : Discord Webhook -->
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span class="material-symbols-outlined" style="color: #818cf8;">forum</span>
-          <h3 style="font-size: 1.1rem; color: #ffffff;">Discord Webhook</h3>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Discord</h2>
+        <label class="check"><input type="checkbox" name="discord_active" value="1" {% if pref_discord.is_active %}checked{% endif %}> Actif</label>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="discord_webhook_url">URL du webhook</label>
+          <input type="url" name="discord_webhook_url" id="discord_webhook_url" value="{{ pref_discord.config.webhook_url|default:'' }}" placeholder="https://discord.com/api/webhooks/…">
+          <span class="hint">Paramètres du salon › Intégrations › Webhooks.</span>
         </div>
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-          <input type="checkbox" name="discord_active" value="1" {% if pref_discord.is_active %}checked{% endif %} style="width: 20px; height: 20px; accent-color: #0284c7;">
-          <span style="font-size: 0.9rem; font-weight: 600;">Activer</span>
-        </label>
-      </div>
-      <div class="form-group">
-        <label class="form-label">URL du Webhook Discord</label>
-        <input type="url" name="discord_webhook_url" class="form-control" value="{{ pref_discord.config.webhook_url|default:'' }}" placeholder="https://discord.com/api/webhooks/...">
-        <span style="font-size: 0.8rem; color: #94a3b8;">Créez un webhook dans les paramètres d'un salon de votre serveur Discord.</span>
-      </div>
-      <div class="form-group" style="margin-top: 1rem;">
-        <label class="form-label">Identifiant utilisateur Discord (User ID pour mention)</label>
-        <input type="text" name="discord_user_id" class="form-control" value="{{ pref_discord.config.discord_user_id|default:'' }}" placeholder="Ex : 282912345678901234">
-        <span style="font-size: 0.8rem; color: #94a3b8;">
-          Permet de vous mentionner directement (&lt;@ID&gt;). Pour l'obtenir : Paramètres Discord &gt; Avancés &gt; Activer le mode développeur &gt; Clic droit sur votre profil &gt; Copier l'identifiant d'utilisateur.
-        </span>
-      </div>
-      <div class="form-group" style="margin-top: 1rem;">
-        <label class="form-label">Préférence de mention (Ping)</label>
-        <select name="discord_ping_mode" class="form-control" style="background-color: rgba(15, 23, 42, 0.8); color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 0.6rem;">
-          <option value="none" {% if pref_discord.config.discord_ping_mode == 'none' or not pref_discord.config.discord_ping_mode %}selected{% endif %}>Ne pas me mentionner</option>
-          <option value="favorite_only" {% if pref_discord.config.discord_ping_mode == 'favorite_only' %}selected{% endif %}>Mentionner uniquement pour les événements favoris</option>
-          <option value="all" {% if pref_discord.config.discord_ping_mode == 'all' %}selected{% endif %}>Mentionner pour tous les événements (non blacklistés)</option>
-        </select>
-        <span style="font-size: 0.8rem; color: #94a3b8;">
-          Choisissez si vous souhaitez être pingé (mention avec alerte sonore/visuelle) selon la nature de l'événement.
-        </span>
-      </div>
-    </div>
-
-    <!-- Canal 3 : Telegram Bot -->
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span class="material-symbols-outlined" style="color: #38bdf8;">send</span>
-          <h3 style="font-size: 1.1rem; color: #ffffff;">Telegram Bot</h3>
+        <div class="field">
+          <label for="discord_user_id">Votre identifiant Discord <span class="muted">(pour être mentionné)</span></label>
+          <input type="text" name="discord_user_id" id="discord_user_id" inputmode="numeric" value="{{ pref_discord.config.discord_user_id|default:'' }}" placeholder="282912345678901234">
+          <span class="hint">Mode développeur activé, clic droit sur votre profil › Copier l'identifiant.</span>
         </div>
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-          <input type="checkbox" name="telegram_active" value="1" {% if pref_telegram.is_active %}checked{% endif %} style="width: 20px; height: 20px; accent-color: #0284c7;">
-          <span style="font-size: 0.9rem; font-weight: 600;">Activer</span>
-        </label>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Votre Chat ID Telegram</label>
-        <input type="text" name="telegram_chat_id" class="form-control" value="{{ pref_telegram.config.chat_id|default:'' }}" placeholder="Ex : 123456789">
-        <span style="font-size: 0.8rem; color: #94a3b8;">
-          Pour obtenir votre Chat ID : lancez la discussion avec le bot Telegram configuré et tapez <code>/start</code> ou contactez <code>@userinfobot</code>.
-        </span>
-      </div>
-    </div>
-
-    <!-- Canal 4 : WhatsApp (Meta Cloud API) -->
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span class="material-symbols-outlined" style="color: #34d399;">chat</span>
-          <h3 style="font-size: 1.1rem; color: #ffffff;">WhatsApp (API Officielle Meta Cloud)</h3>
+        <div class="field">
+          <label for="discord_ping_mode">Mention</label>
+          <select name="discord_ping_mode" id="discord_ping_mode">
+            <option value="none" {% if pref_discord.config.discord_ping_mode == 'none' or not pref_discord.config.discord_ping_mode %}selected{% endif %}>Jamais</option>
+            <option value="favorite_only" {% if pref_discord.config.discord_ping_mode == 'favorite_only' %}selected{% endif %}>Pour les favoris</option>
+            <option value="all" {% if pref_discord.config.discord_ping_mode == 'all' %}selected{% endif %}>Pour tous les événements</option>
+          </select>
         </div>
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-          <input type="checkbox" name="whatsapp_active" value="1" {% if pref_whatsapp.is_active %}checked{% endif %} style="width: 20px; height: 20px; accent-color: #0284c7;">
-          <span style="font-size: 0.9rem; font-weight: 600;">Activer</span>
-        </label>
       </div>
-      <div class="form-group">
-        <label class="form-label">Numéro de téléphone WhatsApp (format international)</label>
-        <input type="tel" name="whatsapp_phone" class="form-control" value="{{ pref_whatsapp.config.phone_number|default:'' }}" placeholder="+33612345678">
-        <span style="font-size: 0.8rem; color: #94a3b8;">Numéro au format international avec indicatif (ex: +336...).</span>
-      </div>
-    </div>
+    </section>
 
-    <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
-      <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
-        <span class="material-symbols-outlined">save</span> Enregistrer mes canaux
-      </button>
-    </div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Telegram</h2>
+        <label class="check"><input type="checkbox" name="telegram_active" value="1" {% if pref_telegram.is_active %}checked{% endif %}> Actif</label>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="telegram_chat_id">Chat ID</label>
+          <input type="text" name="telegram_chat_id" id="telegram_chat_id" value="{{ pref_telegram.config.chat_id|default:'' }}" placeholder="123456789">
+          <span class="hint">Envoyez <code>/start</code> au bot, ou demandez votre ID à <code>@userinfobot</code>.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>WhatsApp</h2>
+        <label class="check"><input type="checkbox" name="whatsapp_active" value="1" {% if pref_whatsapp.is_active %}checked{% endif %}> Actif</label>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="whatsapp_phone">Numéro</label>
+          <input type="tel" name="whatsapp_phone" id="whatsapp_phone" value="{{ pref_whatsapp.config.phone_number|default:'' }}" placeholder="+33612345678">
+          <span class="hint">Format international, avec l'indicatif.</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions"><button type="submit" class="btn primary">Enregistrer</button></div>
   </form>
 </div>
 {% endblock %}

@@ -21,6 +21,13 @@ app.conf.task_routes = {
     'apps.scraping.tasks.*': {'queue': 'celery'},
 }
 
+app.conf.beat_schedule = {
+    'purge-old-records': {
+        'task': 'apps.scraping.tasks.purge_old_records_task',
+        'schedule': 24 * 60 * 60,
+    },
+}
+
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')

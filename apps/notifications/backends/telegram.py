@@ -1,4 +1,5 @@
 import logging
+from html import escape
 import requests
 from django.conf import settings
 from .base import NotificationBackend
@@ -28,21 +29,22 @@ class TelegramBackend(NotificationBackend):
             logger.error("TelegramBackend: Aucun token de bot Telegram configuré.")
             return False
 
+        # HTML plutôt que Markdown : un « * » ou « _ » dans un titre ne casse plus le message
         text = (
-            f"🔔 *UniCA Sport* : {message}\n\n"
-            f"🏅 *{event.title}*\n"
-            f"📅 Date : {event.date_event or 'Non précisée'}\n"
-            f"📍 Lieu : {event.location or 'Non précisé'}\n"
-            f"🔗 [Voir l'événement]({event.url})\n"
+            f"🔔 <b>UniCA Sport</b> : {escape(message)}\n\n"
+            f"🏅 <b>{escape(event.title)}</b>\n"
+            f"📅 Date : {escape(event.date_event or 'Non précisée')}\n"
+            f"📍 Lieu : {escape(event.location or 'Non précisé')}\n"
+            f"🔗 <a href=\"{escape(event.url)}\">Voir l'événement</a>\n"
         )
         if attempt:
-            text += f"\n⚡ *Réservation automatique :* {attempt.get_status_display()} (30 min)"
+            text += f"\n⚡ <b>Réservation automatique :</b> {escape(attempt.get_status_display())} (30 min)"
 
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         payload = {
             "chat_id": chat_id,
             "text": text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "disable_web_page_preview": False
         }
 

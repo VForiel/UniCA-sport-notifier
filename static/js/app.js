@@ -34,6 +34,29 @@ document.addEventListener('htmx:configRequest', (event) => {
   }
 });
 
+// Après un ajout réussi via htmx : vider le formulaire et retirer le message « liste vide »
+document.addEventListener('htmx:afterRequest', (event) => {
+  const form = event.detail.elt;
+  if (event.detail.successful && form.matches && form.matches('form[data-reset-on-success]')) {
+    form.reset();
+    document.querySelectorAll('[data-empty]').forEach((el) => el.remove());
+  }
+});
+
+// Confirmation des actions destructrices hors htmx (pas de onclick inline : la CSP l'interdit)
+document.addEventListener('click', (event) => {
+  const el = event.target.closest('[data-confirm]');
+  if (el && !window.confirm(el.dataset.confirm)) {
+    event.preventDefault();
+  }
+});
+
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-push-subscribe]')) {
+    subscribeUserToPush();
+  }
+});
+
 // Enregistrement du Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -91,11 +114,11 @@ async function subscribeUserToPush() {
     });
 
     if (subRes.ok) {
-      if (statusEl) statusEl.textContent = "✅ Notifications Push activées avec succès !";
+      if (statusEl) statusEl.textContent = "Notifications push activées.";
       alert("Abonnement Push actif ! Vous recevrez désormais les alertes sur cet appareil.");
       window.location.reload();
     } else {
-      if (statusEl) statusEl.textContent = "❌ Erreur lors de l'enregistrement de l'abonnement.";
+      if (statusEl) statusEl.textContent = "Erreur lors de l'enregistrement de l'abonnement.";
     }
   } catch (err) {
     console.error("[Push] Erreur lors de la souscription:", err);

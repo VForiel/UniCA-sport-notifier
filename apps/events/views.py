@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 from .models import FilterRule, UniCACredentials, Event, RegistrationAttempt
 from .forms import FilterRuleForm, UniCACredentialsForm
 from .services import encrypt_password, evaluate_event_for_user
@@ -29,6 +30,7 @@ def rules_view(request):
 
 
 @login_required
+@require_POST
 def delete_rule_view(request, rule_id):
     rule = get_object_or_404(FilterRule, id=rule_id, user=request.user)
     keyword = rule.keyword
@@ -83,11 +85,16 @@ def credentials_view(request):
 
 @login_required
 def recent_events_view(request):
-    events = Event.objects.filter(is_simulated=False).order_by('-first_detected_at')[:50]
+    events = list(Event.objects.filter(is_simulated=False).order_by('-first_detected_at')[:50])
+    rules = list(request.user.filter_rules.all())
+    # Dernière tentative par événement, en une seule requête
+    attempts = {}
+    for attempt in RegistrationAttempt.objects.filter(user=request.user, event__in=events).order_by('timestamp'):
+        attempts[attempt.event_id] = attempt
     evaluated_events = []
     for event in events:
-        evaluation = evaluate_event_for_user(request.user, event)
-        attempt = RegistrationAttempt.objects.filter(user=request.user, event=event).first()
+        evaluation = evaluate_event_for_user(request.user, event, rules=rules)
+        attempt = attempts.get(event.id)
         evaluated_events.append({
             'event': event,
             'evaluation': evaluation,

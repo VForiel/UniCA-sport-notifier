@@ -1,21 +1,17 @@
-<div class="card rule-card" id="rule-{{ rule.id }}" style="padding: 1.25rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-  <div>
-    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
-      <span class="badge {% if rule.rule_type == 'favorite' %}badge-warning{% else %}badge-error{% endif %}">
-        {% if rule.rule_type == 'favorite' %}⭐ Favori (Auto-inscription){% else %}🚫 Liste noire (Ignorer){% endif %}
-      </span>
-      <span class="badge badge-info">{{ rule.get_match_mode_display }}</span>
-      <span style="font-size: 1.15rem; font-weight: 600; color: #ffffff;">"{{ rule.keyword }}"</span>
+{% load ui %}<li id="rule-{{ rule.id }}">
+  <div class="grow">
+    <div class="row">
+      {% if rule.rule_type == 'favorite' %}<span class="tag accent">{% icon 'star' %}Favori</span>{% else %}<span class="tag danger">{% icon 'ban' %}Liste noire</span>{% endif %}
+      <span class="title">« {{ rule.keyword }} »</span>
     </div>
-    <div style="font-size: 0.85rem; color: #94a3b8;">
-      Cible : {{ rule.get_target_field_display }} • Sensible à la casse : {% if rule.case_sensitive %}Oui{% else %}Non{% endif %} • Créée le {{ rule.created_at|date:"d/m/Y H:i" }}
+    <div class="meta">
+      <span>{{ rule.get_match_mode_display }}</span>
+      <span>{{ rule.get_target_field_display }}</span>
+      {% if rule.case_sensitive %}<span>Sensible à la casse</span>{% endif %}
     </div>
   </div>
-
-  <form method="post" action="/rules/{{ rule.id }}/delete/" hx-post="/rules/{{ rule.id }}/delete/" hx-target="#rule-{{ rule.id }}" hx-swap="outerHTML">
+  <form method="post" action="/rules/{{ rule.id }}/delete/" hx-post="/rules/{{ rule.id }}/delete/" hx-target="#rule-{{ rule.id }}" hx-swap="outerHTML" hx-confirm="Supprimer la règle « {{ rule.keyword }} » ?">
     {% csrf_token %}
-    <button type="submit" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="return confirm('Confirmer la suppression de cette règle ?');">
-      <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Supprimer
-    </button>
+    <button type="submit" class="btn sm danger" title="Supprimer">{% icon 'trash' %}</button>
   </form>
-</div>
+</li>
