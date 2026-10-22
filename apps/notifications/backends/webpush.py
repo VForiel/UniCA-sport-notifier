@@ -51,7 +51,9 @@ class WebPushBackend(NotificationBackend):
                     data=payload_str,
                     vapid_private_key=vapid_private_key,
                     vapid_claims={"sub": vapid_admin_email},
-                    ttl=86400
+                    ttl=86400,
+                    # Remise immédiate, même téléphone en veille (sinon Android peut différer et grouper)
+                    headers={"Urgency": "high"},
                 )
                 success_count += 1
             except WebPushException as ex:

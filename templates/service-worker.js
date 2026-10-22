@@ -51,7 +51,10 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/static/icons/icon-192.png',
     badge: '/static/icons/icon-192.png',
+    // Son et vibration : sur Android 8+, c'est le réglage de notifications de l'appli qui décide
+    silent: false,
     vibrate: [200, 100, 200],
+    timestamp: Date.now(),
     data: {
       url: data.url || '/'
     },

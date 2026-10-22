@@ -28,8 +28,11 @@ RUN playwright install --with-deps chromium
 # Copie du code source
 COPY . .
 
-# Droits d'exécution sur le script d'entrée
-RUN chmod +x /app/docker/entrypoint.sh
+# Droits d'exécution sur le script d'entrée ; utilisateur non privilégié qui ne peut écrire
+# que dans les dossiers de fichiers statiques et de médias (le code reste à root, en lecture seule)
+RUN chmod +x /app/docker/entrypoint.sh &&     useradd --create-home --uid 1000 app &&     mkdir -p /app/staticfiles /app/media &&     chown app:app /app/staticfiles /app/media
+
+USER app
 
 EXPOSE 8000
 

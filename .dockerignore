@@ -1,0 +1,14 @@
+# Secrets et fichiers locaux : jamais dans l'image (les variables arrivent par env_file)
+.env
+.git
+.github
+.venv
+.vscode
+**/__pycache__
+*.py[cod]
+db.sqlite3
+backups
+media
+staticfiles
+docker-compose.override.yml
+docker/Caddyfile.vps
