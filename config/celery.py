@@ -1,5 +1,6 @@
 import os
 from celery import Celery
+from celery.schedules import crontab
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -22,9 +23,10 @@ app.conf.task_routes = {
 }
 
 app.conf.beat_schedule = {
-    'ensure-scan-running': {
-        'task': 'apps.scraping.tasks.ensure_scan_running_task',
-        'schedule': 5 * 60,
+    # Une page par demi-heure en journée (heure de Paris, CELERY_TIMEZONE) : de 8h05 à 19h35
+    'scan-events': {
+        'task': 'apps.scraping.tasks.scan_events_task',
+        'schedule': crontab(minute='5,35', hour='8-19'),
     },
     'purge-old-records': {
         'task': 'apps.scraping.tasks.purge_old_records_task',

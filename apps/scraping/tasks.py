@@ -116,7 +116,7 @@ def auto_register_task(self, user_id: int, event_id: int, attempt_id: int):
 
 
 @shared_task(bind=True, queue='celery')
-def scan_events_task(self, auto_reschedule: bool = True):
+def scan_events_task(self):
     """
     Tâche Celery principale de scan :
     1. Exécute le scraping Playwright.
@@ -124,14 +124,13 @@ def scan_events_task(self, auto_reschedule: bool = True):
     3. Évalue les FilterRule de chaque utilisateur.
     4. Déclenche notifications et réservations automatiques.
     5. Enregistre un ScanLog.
-    6. Calcule le prochain délai et s'auto-replanifie via apply_async(countdown=...).
+    Planifiée par Celery beat (voir config/celery.py).
     """
     start_time = time.time()
     events_found_count = 0
     new_events_count = 0
     status = 'succès'
     error_msg = ""
-    settings_obj = ServerSettings.get_solo()
 
     try:
         scraped_events = scrape_unica_events_sync()
@@ -236,14 +235,7 @@ def scan_events_task(self, auto_reschedule: bool = True):
         error_message=error_msg
     )
 
-    # Replanification automatique dynamique avec jitter et fuseau Europe/Paris
-    if auto_reschedule:
-        next_delay = calculate_next_scan_delay(settings_obj=settings_obj)
-        logger.info(f"Scan terminé ({status}). Prochaine exécution programmée dans {next_delay} secondes.")
-        try:
-            scan_events_task.apply_async(countdown=next_delay, retry=False)
-        except Exception as e:
-            logger.info(f"Broker Celery non connecté pour la replanification ({e}).")
+    logger.info(f"Scan terminé ({status}) : {events_found_count} trouvé(s), {new_events_count} nouveau(x).")
 
     return {
         'status': status,
@@ -263,24 +255,3 @@ def purge_old_records_task(scan_log_days: int = 30):
     logger.info(f"Purge : {deleted_logs} journal(aux) de scan, {deleted_sims} événement(s) de test supprimés.")
     return {'scan_logs': deleted_logs, 'simulated_events': deleted_sims}
 
-
-@shared_task(queue='celery')
-def ensure_scan_running_task():
-    """
-    Relance la chaîne de scans si elle s'est arrêtée : elle se replanifie elle-même, mais rien ne la démarre
-    au lancement, et un redémarrage du worker perd le scan en attente.
-    """
-    from datetime import timedelta
-    settings_obj = ServerSettings.get_solo()
-    longest_wait = max(
-        settings_obj.day_interval_seconds + settings_obj.day_jitter_seconds,
-        settings_obj.night_interval_seconds + settings_obj.night_jitter_seconds,
-    )
-    # Marge de 5 minutes pour la durée du scan lui-même
-    stale_before = timezone.now() - timedelta(seconds=longest_wait + 300)
-    latest = ScanLog.objects.order_by('-timestamp').first()
-    if latest and latest.timestamp >= stale_before:
-        return False
-    logger.warning("Aucun scan récent : relance de la chaîne de scans.")
-    scan_events_task.apply_async(retry=False)
-    return True

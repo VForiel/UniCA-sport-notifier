@@ -21,7 +21,7 @@ Application Web Progressive (PWA) de veille automatique, de filtrage personnalis
 ## 1. Fonctionnalités Clés
 
 - **Veille autonome & Scraper asynchrone** : Scraping Playwright avec `playwright-stealth`, rotation d'User-Agents et temporisations humaines réalistes.
-- **Ordonnanceur dynamique auto-replanifié** : Tâche Celery sans cron figé ; calcule son prochain délai en fonction de l'heure légale à Paris (`Europe/Paris`), du mode diurne/nocturne et d'un jitter aléatoire $\pm$ ajustable en base.
+- **Scans espacés** : Celery beat lance un scan à xh05 et xh35, de 8h à 20h (heure de Paris), soit 24 passages par jour pour ménager le portail UniCA Sport.
 - **Règles de filtrage personnalisées** :
   - **Liste noire** : Ne jamais notifier les activités exclues.
   - **Favoris** : Priorité maximale, alerte immédiate et déclenchement de la réservation automatique.
@@ -38,7 +38,7 @@ Application Web Progressive (PWA) de veille automatique, de filtrage personnalis
   - Installable sur mobile et ordinateur avec `manifest.json` et `service-worker.js`.
 - **Accès sur invitation** : tout nouveau compte est créé inactif ; les administrateurs reçoivent un email et le valident depuis l'admin (action « Valider les comptes sélectionnés »).
 - **Administration Django sur-mesure** :
-  - Singleton `ServerSettings` éditable à chaud (intervalles, jitter, clés API).
+  - Singleton `ServerSettings` éditable à chaud (SMTP, clés API).
   - Actions rapides sur les utilisateurs : réinitialisation de mot de passe par email, suppression de compte en cascade (RGPD), bascule de droits.
   - Journal d'audit des actions sensibles (`AuditLog`) et diagnostics (`ScanLog`, `RegistrationAttempt`).
 

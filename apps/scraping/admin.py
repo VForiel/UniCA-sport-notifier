@@ -11,7 +11,8 @@ class ServerSettingsAdmin(admin.ModelAdmin):
                 ('night_interval_seconds', 'night_jitter_seconds'),
                 ('day_start_time', 'night_start_time'),
             ),
-            'description': "Configurez les délais et le jitter aléatoire pour le mode diurne et nocturne (fuseau Europe/Paris)."
+            'description': "Utilisés uniquement par la boucle de développement run_scan_loop. En production, Celery beat "
+                           "lance un scan à xh05 et xh35 de 8h à 20h (config/celery.py)."
         }),
         ("Configuration Email / SMTP", {
             'classes': ('collapse',),

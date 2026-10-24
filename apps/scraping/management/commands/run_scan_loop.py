@@ -18,7 +18,7 @@ class Command(BaseCommand):
                 settings_obj = ServerSettings.get_solo()
                 delay = calculate_next_scan_delay(settings_obj=settings_obj)
                 self.stdout.write(f"[{time.strftime('%H:%M:%S')}] Lancement du scan Playwright...")
-                result = scan_events_task(auto_reschedule=False)
+                result = scan_events_task()
                 self.stdout.write(
                     f"[{time.strftime('%H:%M:%S')}] Scan terminé : {result.get('events_found', 0)} trouvé(s), "
                     f"{result.get('new_events', 0)} nouveau(x) ({result.get('status', 'inconnu')})."
