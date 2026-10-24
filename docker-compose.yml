@@ -32,6 +32,8 @@ services:
     build: .
     container_name: unicasport_web
     restart: unless-stopped
+    # tini en PID 1 : récupère les processus Chromium zombies laissés par Playwright
+    init: true
     env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-unicasport}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}@db:5432/${POSTGRES_DB:-unicasport_db}
@@ -53,6 +55,7 @@ services:
     build: .
     container_name: unicasport_worker
     restart: unless-stopped
+    init: true
     command: celery -A config worker -l INFO -Q celery,notifications -c 2
     env_file: .env
     environment:
@@ -72,6 +75,7 @@ services:
     build: .
     container_name: unicasport_beat
     restart: unless-stopped
+    init: true
     command: celery -A config beat -l INFO --schedule /tmp/celerybeat-schedule
     env_file: .env
     environment:

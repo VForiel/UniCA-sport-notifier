@@ -36,22 +36,22 @@ async def fetch_unica_events_playwright(url: str = TARGET_URL, max_pages: int = 
                 '--disable-dev-shm-usage',
             ]
         )
-        context = await browser.new_context(
-            user_agent=selected_ua,
-            viewport={'width': 1920, 'height': 1080},
-            locale='fr-FR',
-            timezone_id='Europe/Paris'
-        )
-        page = await context.new_page()
-
-        # Application du module stealth
-        stealth = Stealth()
-        await stealth.apply_stealth_async(page)
-
-        current_url = url
-        page_idx = 1
-
         try:
+            context = await browser.new_context(
+                user_agent=selected_ua,
+                viewport={'width': 1920, 'height': 1080},
+                locale='fr-FR',
+                timezone_id='Europe/Paris'
+            )
+            page = await context.new_page()
+
+            # Application du module stealth
+            stealth = Stealth()
+            await stealth.apply_stealth_async(page)
+
+            current_url = url
+            page_idx = 1
+
             while current_url and page_idx <= max_pages:
                 logger.info(f"Navigation Playwright vers page {page_idx} : {current_url}")
                 await page.goto(current_url, wait_until='domcontentloaded', timeout=35000)
