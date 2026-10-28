@@ -112,6 +112,12 @@ Docker va orchestrer les 6 services :
 - `beat` (Garde-fou Celery Beat)
 - `caddy` (Reverse proxy HTTPS automatique)
 
+### Mises à jour (VPS1)
+Automatiques : chaque push sur `main` lance les tests puis le déploiement (`.github/workflows/deploy.yml`). La GitHub Action
+se connecte à VPS1 avec une clé limitée à `~/deploy/gate.sh unica`, qui fait `git pull --ff-only` puis
+`docker compose up -d --build` dans `~/UNICA-sport-notifier` (journal : `~/deploy/logs/unica-prod.log`).
+À la main : `ssh VPS1 '~/deploy/deploy.sh unica'`.
+
 Le script `docker/entrypoint.sh` applique automatiquement les migrations, collecte les fichiers statiques et initialise le superadministrateur.
 
 ---
